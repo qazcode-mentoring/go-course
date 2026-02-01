@@ -80,7 +80,7 @@ func FindUser(id int) (string, error) {
 	}
 
 	return "", NotFoundError{
-		Resource: "id",
+		Resource: "Пользователь",
 		ID:       id,
 	}
 }
