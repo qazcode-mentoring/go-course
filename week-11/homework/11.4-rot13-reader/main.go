@@ -43,16 +43,11 @@ func (r *Rot13Reader) Read(p []byte) (n int, err error) {
 	// 2. Примени rot13 к каждому прочитанному байту
 	// 3. Верни количество прочитанных байт и ошибку
 	n, err = r.reader.Read(p)
-
-	if err != nil {
-		return n, err
-	}
-
 	for i := 0; i < n; i++ {
 		p[i] = rot13(p[i])
 	}
 
-	return n, io.EOF
+	return n, err
 }
 
 func main() {
