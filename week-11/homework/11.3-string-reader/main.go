@@ -51,7 +51,7 @@ func (r *LimitReader) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 
-	toRead := r.limit - r.read
+	toRead := min(len(p), r.limit-r.read)
 	n, err = r.reader.Read(p[:toRead])
 	r.read += n
 
@@ -82,12 +82,8 @@ func (r *CountingReader) Read(p []byte) (n int, err error) {
 	// Верни результат
 
 	n, err = r.reader.Read(p)
-	if err != nil {
-		return 0, err
-	}
-
 	r.BytesRead += n
-	return n, nil
+	return n, err
 }
 
 func main() {
