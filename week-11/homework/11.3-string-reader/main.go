@@ -55,11 +55,7 @@ func (r *LimitReader) Read(p []byte) (n int, err error) {
 	n, err = r.reader.Read(p[:toRead])
 	r.read += n
 
-	if err != nil {
-		return n, err
-	}
-
-	return n, nil
+	return n, err
 }
 
 // CountingReader подсчитывает количество прочитанных байт
