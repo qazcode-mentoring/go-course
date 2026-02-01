@@ -21,7 +21,7 @@ func TypeName(v any) string {
 	case float64:
 		return "float64"
 	case bool:
-		return "boolean"
+		return "bool"
 	default:
 		return "unknown"
 	}

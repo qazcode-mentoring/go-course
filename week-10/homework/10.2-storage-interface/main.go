@@ -102,6 +102,7 @@ func (s *SliceStorage) Delete(key string) {
 	for i, v := range s.items {
 		if v.Key == key {
 			s.items = append(s.items[:i], s.items[i+1:]...)
+			return
 		}
 	}
 }
