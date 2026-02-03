@@ -30,6 +30,20 @@ func worker(id int, tasks <-chan Task, results chan<- Result, wg *sync.WaitGroup
 	//    - Симулируй работу: time.Sleep(task.Duration)
 	//    - Создай Result и отправь в канал results
 	//    - Выведи: "[Worker ID] Завершил задачу TaskID"
+	defer wg.Done()
+
+	for task := range tasks {
+		fmt.Printf("Worker %d начал задачу %d: %s\n", id, task.ID, task.Name)
+		time.Sleep(task.Duration)
+		result := Result{
+			TaskID:    task.ID,
+			Output:    task.Name,
+			Completed: time.Now(),
+		}
+
+		results <- result
+		fmt.Printf("Worker %d завершил задачу %d\n", id, task.ID)
+	}
 }
 
 // processTasksBuffered обрабатывает задачи через буферизованный канал
@@ -46,7 +60,31 @@ func processTasksBuffered(tasks []Task, bufferSize, workerCount int) []Result {
 	// 7. Дождись завершения всех воркеров (wg.Wait())
 	// 8. Закрой канал результатов
 	// 9. Собери результаты из канала в слайс и верни
-	return nil
+	taskCh := make(chan Task, bufferSize)
+	resCh := make(chan Result, len(tasks))
+	wg := &sync.WaitGroup{}
+
+	for i := 1; i <= workerCount; i++ {
+		wg.Add(1)
+		go worker(i, taskCh, resCh, wg)
+	}
+
+	for _, task := range tasks {
+		taskCh <- task
+	}
+
+	close(taskCh)
+
+	wg.Wait()
+
+	close(resCh)
+
+	var results []Result
+	for res := range resCh {
+		results = append(results, res)
+	}
+
+	return results
 }
 
 // processTasksUnbuffered обрабатывает задачи через небуферизованный канал
@@ -59,7 +97,32 @@ func processTasksUnbuffered(tasks []Task, workerCount int) []Result {
 	// ВАЖНО: при небуферизованном канале отправка будет блокироваться,
 	// пока воркер не прочитает задачу. Поэтому отправку задач нужно
 	// делать в отдельной горутине!
-	return nil
+	taskCh := make(chan Task)
+	resCh := make(chan Result, len(tasks))
+	wg := &sync.WaitGroup{}
+
+	for i := 1; i <= workerCount; i++ {
+		wg.Add(1)
+		go worker(i, taskCh, resCh, wg)
+	}
+
+	go func() {
+		for _, task := range tasks {
+			taskCh <- task
+		}
+		close(taskCh)
+	}()
+
+	wg.Wait()
+
+	close(resCh)
+
+	var results []Result
+	for res := range resCh {
+		results = append(results, res)
+	}
+
+	return results
 }
 
 func main() {
