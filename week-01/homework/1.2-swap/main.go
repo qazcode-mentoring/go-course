@@ -5,7 +5,7 @@ import "fmt"
 // swap принимает два целых числа и возвращает их в обратном порядке
 func swap(a, b int) (int, int) {
 	// TODO: реализуй функцию
-	return 0, 0
+	return a, b
 }
 
 func main() {
