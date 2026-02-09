@@ -15,10 +15,16 @@ func Factorial(n int) (int, error) {
 
 	if n < 0 {
 		return 0, errors.New("факториал отрицательного числа не определён")
+	} else if n == 0 {
+		return 1, nil
+	}
+	// TODO: вычисли факториал
+	var result = 1
+	for i := 1; i < n; i++ {
+		result *= i + 1
 	}
 
-	// TODO: вычисли факториал
-	return 0, nil
+	return result, nil
 }
 
 func main() {
