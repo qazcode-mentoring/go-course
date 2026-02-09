@@ -9,7 +9,8 @@ import (
 func Circle(radius float64) (area, perimeter float64) {
 	// TODO: реализуй функцию
 	// Используй math.Pi для числа π
-	_ = math.Pi // удали эту строку после реализации
+	area = math.Pi * radius * radius
+	perimeter = 2 * math.Pi * radius
 	return
 }
 
