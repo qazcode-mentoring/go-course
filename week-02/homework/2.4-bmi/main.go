@@ -21,11 +21,11 @@ func InterpretBMI(bmi float64) string {
 	// 18.5 - 24.9: "Норма"
 	// 25.0 - 29.9: "Избыточный вес"
 	// >= 30: "Ожирение"
-	if bmi < 18.5 {
+	if bmi <= 18.5 {
 		return "Недостаточный вес"
-	} else if bmi > 18.5 && bmi < 24.9 {
+	} else if bmi >= 18.5 && bmi <= 24.9 {
 		return "Норма"
-	} else if bmi > 25.0 && bmi < 29.9 {
+	} else if bmi >= 25.0 && bmi <= 29.9 {
 		return "Избыточный вес"
 	}
 	return "Ожирение"
