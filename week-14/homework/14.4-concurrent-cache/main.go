@@ -84,7 +84,7 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	return v, true
+	return v.Value, true
 
 }
 
@@ -112,6 +112,8 @@ func (c *Cache) Delete(key string) bool {
 func (c *Cache) Count() int {
 	// TODO: реализуй метод
 	// Используй RLock для чтения
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return len(c.items)
 }
 
