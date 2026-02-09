@@ -16,6 +16,12 @@ func rot13(b byte) byte {
 	// Если b в диапазоне 'a'-'z':
 	//   return 'a' + (b - 'a' + 13) % 26
 	// Иначе return b
+	if b >= 'A' && b <= 'Z' {
+		return 'A' + (b-'A'+13)%26
+	} else if b >= 'a' && b <= 'z' {
+		return 'a' + (b-'a'+13)%26
+	}
+
 	return b
 }
 
@@ -36,7 +42,12 @@ func (r *Rot13Reader) Read(p []byte) (n int, err error) {
 	// 1. Прочитай данные из r.reader в p
 	// 2. Примени rot13 к каждому прочитанному байту
 	// 3. Верни количество прочитанных байт и ошибку
-	return 0, io.EOF
+	n, err = r.reader.Read(p)
+	for i := 0; i < n; i++ {
+		p[i] = rot13(p[i])
+	}
+
+	return n, err
 }
 
 func main() {

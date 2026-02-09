@@ -23,7 +23,10 @@ func (r *RepeatReader) Read(p []byte) (n int, err error) {
 	// TODO: реализуй метод
 	// Заполни весь буфер p символом r.char
 	// Верни len(p), nil
-	return 0, nil
+	for i := 0; i < len(p); i++ {
+		p[i] = r.char
+	}
+	return len(p), nil
 }
 
 // LimitReader ограничивает количество байт из другого Reader
@@ -44,7 +47,15 @@ func (r *LimitReader) Read(p []byte) (n int, err error) {
 	// TODO: реализуй метод
 	// Если уже прочитано >= limit, верни 0, io.EOF
 	// Иначе читай, но не более чем осталось до limit
-	return 0, io.EOF
+	if r.read >= r.limit {
+		return 0, io.EOF
+	}
+
+	toRead := min(len(p), r.limit-r.read)
+	n, err = r.reader.Read(p[:toRead])
+	r.read += n
+
+	return n, err
 }
 
 // CountingReader подсчитывает количество прочитанных байт
@@ -65,7 +76,10 @@ func (r *CountingReader) Read(p []byte) (n int, err error) {
 	// Прочитай из r.reader
 	// Добавь n к BytesRead
 	// Верни результат
-	return 0, io.EOF
+
+	n, err = r.reader.Read(p)
+	r.BytesRead += n
+	return n, err
 }
 
 func main() {
