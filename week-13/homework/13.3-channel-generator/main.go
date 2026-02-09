@@ -11,7 +11,16 @@ func generateNumbers(start, end int) <-chan int {
 	//    - Использует defer close(ch)
 	//    - В цикле отправляет числа от start до end в канал
 	// 3. Верни канал
-	return nil
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+		for i := start; i <= end; i++ {
+			ch <- i
+		}
+	}()
+
+	return ch
 }
 
 // generateFibonacci генерирует первые n чисел Фибоначчи
@@ -25,7 +34,23 @@ func generateFibonacci(n int) <-chan int {
 	//    - Генерирует n чисел Фибоначчи
 	//    - Отправляет каждое число в канал
 	// 3. Верни канал
-	return nil
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+
+		previous := 0
+		current := 1
+		for i := 0; i < n; i++ {
+			next := previous
+			previous = current
+			current = next + previous
+
+			ch <- next
+		}
+	}()
+
+	return ch
 }
 
 // isPrime проверяет, является ли число простым
@@ -51,7 +76,20 @@ func generatePrimes(maxNum int) <-chan int {
 	//    - Проверяет каждое число от 2 до maxNum
 	//    - Если число простое, отправляет в канал
 	// 3. Верни канал
-	return nil
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+
+		for i := 2; i <= maxNum; i++ {
+			if isPrime(i) {
+				ch <- i
+			}
+		}
+
+	}()
+
+	return ch
 }
 
 func main() {
