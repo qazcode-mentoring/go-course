@@ -9,6 +9,18 @@ func DayName(n int) string {
 	case 1:
 		return "Понедельник"
 	// TODO: добавь остальные дни
+	case 2:
+		return "Вторник"
+	case 3:
+		return "Среда"
+	case 4:
+		return "Четверг"
+	case 5:
+		return "Пятница"
+	case 6:
+		return "Суббота"
+	case 7:
+		return "Воскресене"
 	default:
 		return "Некорректный день"
 	}
