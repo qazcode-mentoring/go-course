@@ -8,6 +8,8 @@ import (
 	"time"
 	// Раскомментируй после реализации
 	// "golang.org/x/sync/errgroup"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // DataItem представляет загруженные данные
@@ -72,11 +74,28 @@ func fetchAll(ctx context.Context, urls []string) ([]DataItem, error) {
 	// 4. Дождись завершения: err := g.Wait()
 	// 5. При ошибке верни nil, err
 	// 6. При успехе верни results, nil
+	g, ctx := errgroup.WithContext(ctx)
+	results := make([]DataItem, len(urls))
+	for i, url := range urls {
+		i, url := i, url
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+			if err != nil {
+				return err
+			}
 
-	_ = ctx  // удали после реализации
-	_ = urls // удали после реализации
+			results[i] = item
+			return nil
+		})
 
-	return nil, fmt.Errorf("not implemented")
+	}
+
+	err := g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 // fetchAllWithLimit загружает данные с ограничением параллелизма.
@@ -96,15 +115,32 @@ func fetchAllWithLimit(ctx context.Context, urls []string, limit int) ([]DataIte
 	// 6. g.Wait() - игнорируй возвращаемое значение
 	// 7. Верни results, errors
 
-	_ = ctx   // удали после реализации
-	_ = urls  // удали после реализации
-	_ = limit // удали после реализации
+	g := new(errgroup.Group)
+	g.SetLimit(limit)
+	var (
+		results []DataItem
+		errs    []error
+		mu      sync.Mutex
+	)
 
-	// Заглушка для sync.Mutex чтобы импорт не ломался
-	var mu sync.Mutex
-	_ = mu
+	for _, url := range urls {
+		url := url
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = append(errs, err)
+				return nil
+			}
 
-	return nil, nil
+			results = append(results, item)
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+	return results, errs
 }
 
 // aggregateData собирает данные из нескольких источников и агрегирует результат.
@@ -123,10 +159,28 @@ func aggregateData(ctx context.Context, sources []string) (AggregatedResult, err
 	//
 	// Бонус: добавь TotalTime как максимальное время из всех Duration
 
-	_ = ctx     // удали после реализации
-	_ = sources // удали после реализации
+	items, errs := fetchAllWithLimit(ctx, sources, 3)
+	var (
+		maxDuration time.Duration
+		sumOfSize   int
+	)
+	for _, item := range items {
+		sumOfSize += item.Size
+		if item.Duration > maxDuration {
+			maxDuration = item.Duration
+		}
+	}
 
-	return AggregatedResult{}, fmt.Errorf("not implemented")
+	aggregatedRes := AggregatedResult{
+		TotalItems:   len(items),
+		TotalSize:    sumOfSize,
+		TotalTime:    maxDuration,
+		SuccessCount: len(items),
+		ErrorCount:   len(errs),
+		Items:        items,
+	}
+
+	return aggregatedRes, nil
 }
 
 func main() {
