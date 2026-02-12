@@ -11,7 +11,7 @@ func Greet(name string) string {
 		return "Привет, незнакомец!"
 	}
 
-	return fmt.Sprintf("Привет, %s! Добро пожаловать в мир Go! \n", name)
+	return fmt.Sprintf("Привет, %s! Добро пожаловать в мир Go!", name)
 }
 
 func main() {
