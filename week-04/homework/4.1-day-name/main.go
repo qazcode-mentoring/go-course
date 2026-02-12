@@ -20,7 +20,7 @@ func DayName(n int) string {
 	case 6:
 		return "Суббота"
 	case 7:
-		return "Воскресене"
+		return "Воскресенье"
 	default:
 		return "Некорректный день"
 	}
