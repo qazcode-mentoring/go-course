@@ -21,11 +21,11 @@ func InterpretBMI(bmi float64) string {
 	// 18.5 - 24.9: "Норма"
 	// 25.0 - 29.9: "Избыточный вес"
 	// >= 30: "Ожирение"
-	if bmi <= 18.5 {
+	if bmi < 18.5 {
 		return "Недостаточный вес"
-	} else if bmi >= 18.5 && bmi <= 24.9 {
+	} else if bmi <= 24.9 {
 		return "Норма"
-	} else if bmi >= 25.0 && bmi <= 29.9 {
+	} else if bmi <= 29.9 {
 		return "Избыточный вес"
 	}
 	return "Ожирение"
@@ -42,17 +42,17 @@ func main() {
 	// - Недостаточный вес
 	bmi1 := CalculateBMI(50, 165)
 	fmt.Printf("Вес: 50, Рост: 165 см\n")
-	fmt.Printf("ИМТЖ %.1f\n", bmi1)
+	fmt.Printf("ИМТ: %.1f\n", bmi1)
 	fmt.Printf("Категория: %s\n\n", InterpretBMI(bmi1))
 
 	// - Избыточный вес
 	bmi2 := CalculateBMI(70, 165)
 	fmt.Printf("Вес: 70, Рост: 165 см\n")
-	fmt.Printf("ИМТЖ %.1f\n", bmi2)
+	fmt.Printf("ИМТ: %.1f\n", bmi2)
 	fmt.Printf("Категория: %s\n\n", InterpretBMI(bmi2))
 	// - Ожирение
 	bmi3 := CalculateBMI(90, 165)
-	fmt.Printf("Вес: 70, Рост: 165 см\n")
-	fmt.Printf("ИМТЖ %.1f\n", bmi3)
+	fmt.Printf("Вес: 90, Рост: 165 см\n")
+	fmt.Printf("ИМТ: %.1f\n", bmi3)
 	fmt.Printf("Категория: %s\n\n", InterpretBMI(bmi3))
 }
