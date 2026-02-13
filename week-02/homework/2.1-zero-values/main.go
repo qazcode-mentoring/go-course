@@ -5,6 +5,12 @@ import "fmt"
 func main() {
 	// TODO: Объяви переменные всех базовых типов БЕЗ инициализации
 	// и выведи их значения
+	var str string
+	var number int
+	var f float64
+	var t bool
+
+	fmt.Println(str, number, f, t)
 
 	// Целые числа
 	var i int
@@ -25,9 +31,34 @@ func main() {
 	// - float32, float64
 	// - bool
 	// - string
+	var ui uint
+	var ui8 uint8
+	var ui16 uint16
+	var ui32 uint32
+	var ui64 uint64
+
+	fmt.Printf("uint: %d\n", ui)
+	fmt.Printf("uint8: %d\n", ui8)
+	fmt.Printf("uint16: %d\n", ui16)
+	fmt.Printf("uint32: %d\n", ui32)
+	fmt.Printf("uint64: %d\n", ui64)
+
+	var f32 float32
+	var f64 float64
+
+	fmt.Printf("float32: %.f\n", f32)
+	fmt.Printf("float64: %.f\n", f64)
+
+	var b bool
+	var s string
+
+	fmt.Printf("bool: %v\n", b)
+	fmt.Printf("string: %s\n", s)
 
 	// TODO: Напиши ответ на вопрос здесь:
 	// Почему в Go нет null/nil для базовых типов? Какие проблемы это решает?
 	//
-	// Ответ: ...
+	// Ответ: Чтобы избежать лишних проверок на отсутсвие значения в переменной,
+	// в Go базовые типы имеют значения по умолчанию.
+	// Решает проблему забытых проверок на null/nil
 }
