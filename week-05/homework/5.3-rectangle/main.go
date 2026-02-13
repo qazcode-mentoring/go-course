@@ -11,19 +11,21 @@ type Rectangle struct {
 // Area вычисляет площадь прямоугольника
 func Area(r Rectangle) float64 {
 	// TODO: реализуй функцию
-	return 0
+	return r.Width * r.Height
 }
 
 // Perimeter вычисляет периметр прямоугольника
 func Perimeter(r Rectangle) float64 {
 	// TODO: реализуй функцию
-	return 0
+	return (r.Width + r.Height) * 2
 }
 
 // Scale масштабирует прямоугольник на заданный коэффициент
 func Scale(r *Rectangle, factor float64) {
 	// TODO: реализуй функцию
 	// Умножь Width и Height на factor
+	r.Width = r.Width * factor
+	r.Height = r.Height * factor
 }
 
 func main() {
