@@ -44,10 +44,21 @@ func worker(id int, jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup) 
 	//    e) Выведи сообщение о завершении
 	//    f) Отправь Result в канал results
 
-	_ = id      // удали после реализации
-	_ = jobs    // удали после реализации
-	_ = results // удали после реализации
-	_ = wg      // удали после реализации
+	defer wg.Done()
+	for job := range jobs {
+		fmt.Println("Начало обработки задачи: ", job)
+		start := time.Now()
+		process := processJob(job)
+		end := time.Since(start)
+
+		fmt.Println("Задача выполнена")
+		results <- Result{
+			JobID:    job.ID,
+			Output:   process,
+			WorkerID: id,
+			Duration: end,
+		}
+	}
 }
 
 // RunWorkerPool запускает пул воркеров и обрабатывает задачи.
@@ -74,10 +85,32 @@ func RunWorkerPool(numWorkers int, jobs []Job) []Result {
 	// 8. Собери все результаты из канала в слайс
 	// 9. Верни слайс результатов
 
-	_ = numWorkers // удали после реализации
-	_ = jobs       // удали после реализации
+	jobsChan := make(chan Job, len(jobs))
+	resultsChan := make(chan Result, len(jobs))
+	wg := &sync.WaitGroup{}
 
-	return nil
+	for i := 1; i <= numWorkers; i++ {
+		wg.Add(1)
+		go worker(i, jobsChan, resultsChan, wg)
+	}
+
+	for _, job := range jobs {
+		jobsChan <- job
+	}
+
+	close(jobsChan)
+
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	var resultsSlice []Result
+	for result := range resultsChan {
+		resultsSlice = append(resultsSlice, result)
+	}
+
+	return resultsSlice
 }
 
 func main() {

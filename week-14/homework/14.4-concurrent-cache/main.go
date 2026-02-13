@@ -26,6 +26,8 @@ type Cache struct {
 	// TODO: добавь поля
 	// - mu sync.RWMutex для защиты данных
 	// - items map[string]CacheItem для хранения элементов
+	mu    sync.RWMutex
+	items map[string]CacheItem
 }
 
 // NewCache создаёт новый кэш
@@ -33,7 +35,10 @@ func NewCache() *Cache {
 	// TODO: реализуй функцию
 	// Не забудь инициализировать map!
 
-	return &Cache{}
+	return &Cache{
+		mu:    sync.RWMutex{},
+		items: make(map[string]CacheItem),
+	}
 }
 
 // Set добавляет или обновляет значение в кэше с указанным TTL.
@@ -47,9 +52,19 @@ func (c *Cache) Set(key string, value interface{}, ttl time.Duration) {
 	// 3. Создай CacheItem и сохрани в map
 	// 4. Освободи мьютекс
 
-	_ = key   // удали после реализации
-	_ = value // удали после реализации
-	_ = ttl   // удали после реализации
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var t time.Time
+	if ttl > 0 {
+		t = time.Now().Add(ttl)
+	} else {
+		t = time.Time{}
+	}
+
+	c.items[key] = CacheItem{
+		Value:     value,
+		ExpiresAt: t,
+	}
 }
 
 // Get возвращает значение из кэша.
@@ -62,8 +77,15 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 	// 4. Если найден, но истёк - верни nil, false
 	// 5. Верни значение и true
 
-	_ = key // удали после реализации
-	return nil, false
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	v, ok := c.items[key]
+	if !ok || v.IsExpired() {
+		return nil, false
+	}
+
+	return v.Value, true
+
 }
 
 // Delete удаляет значение из кэша.
@@ -75,7 +97,14 @@ func (c *Cache) Delete(key string) bool {
 	// 3. Удали ключ из map
 	// 4. Верни true, если ключ был
 
-	_ = key // удали после реализации
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, ok := c.items[key]
+	if ok {
+		delete(c.items, key)
+		return true
+	}
+
 	return false
 }
 
@@ -83,8 +112,9 @@ func (c *Cache) Delete(key string) bool {
 func (c *Cache) Count() int {
 	// TODO: реализуй метод
 	// Используй RLock для чтения
-
-	return 0
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.items)
 }
 
 // Cleanup удаляет все истёкшие записи.
@@ -96,8 +126,18 @@ func (c *Cache) Cleanup() int {
 	// 3. Если элемент истёк - удали его
 	// 4. Посчитай количество удалённых
 	// 5. Верни счётчик
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	deletedItems := 0
+	for k := range c.items {
+		v := c.items[k]
+		if v.IsExpired() {
+			delete(c.items, k)
+			deletedItems++
+		}
+	}
 
-	return 0
+	return deletedItems
 }
 
 func main() {
