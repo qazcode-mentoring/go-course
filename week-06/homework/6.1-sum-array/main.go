@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+// template
 // Sum возвращает сумму всех элементов массива
 func Sum(arr [5]int) int {
 	// TODO: реализуй функцию
