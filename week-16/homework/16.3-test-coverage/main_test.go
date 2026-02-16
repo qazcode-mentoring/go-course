@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -16,6 +17,10 @@ func TestValidator_ValidateUsername(t *testing.T) {
 			// "user",
 			// "user_123",
 			// "User_Name_Long",
+
+			"user",
+			"user_123",
+			"User_Name_Long",
 		}
 
 		for _, name := range validNames {
@@ -24,7 +29,9 @@ func TestValidator_ValidateUsername(t *testing.T) {
 				// if err := v.ValidateUsername(name); err != nil {
 				//     t.Errorf("expected %q to be valid, got error: %v", name, err)
 				// }
-				_ = v
+				if err := v.ValidateUsername(name); err != nil {
+					t.Errorf("expected %q to be valid, got error: %v", name, err)
+				}
 			})
 		}
 	})
@@ -36,25 +43,65 @@ func TestValidator_ValidateUsername(t *testing.T) {
 		// if !errors.Is(err, ErrUsernameTooShort) {
 		//     t.Errorf("expected ErrUsernameTooShort, got %v", err)
 		// }
-		_ = v
+
+		err := v.ValidateUsername("ab")
+		if !errors.Is(err, ErrUsernameTooShort) {
+			t.Errorf("expected ErrUsernameTooShort, got %v", err)
+		}
+
+		err = v.ValidateUsername("a")
+		if !errors.Is(err, ErrUsernameTooShort) {
+			t.Errorf("expected ErrUsernameTooShort, got %v", err)
+		}
+
 	})
 
 	// TODO: Реализуй группу тестов для слишком длинных username
 	t.Run("too long", func(t *testing.T) {
 		// TODO: Проверь username длиной > 20 символов
-		_ = v
+		err := v.ValidateUsername("reallylongusernameeeblablablablagolang")
+		if !errors.Is(err, ErrUsernameTooLong) {
+			t.Errorf("expected ErrUsernameTooLong, got %v", err)
+		}
 	})
 
 	// TODO: Реализуй тест для username, начинающегося с цифры
 	t.Run("starts with digit", func(t *testing.T) {
-		// TODO: Проверь "1user", "123abc" и т.д.
-		_ = v
+		// TODO: Проверь "1user", "123abc" и т.д
+		err := v.ValidateUsername("1user")
+		if !errors.Is(err, ErrUsernameStartsDigit) {
+			t.Errorf("expected ErrUsernameStartsDigit, got %v", err)
+		}
+	})
+
+	t.Run("starts with digit", func(t *testing.T) {
+		err := v.ValidateUsername("123abc")
+		if !errors.Is(err, ErrUsernameStartsDigit) {
+			t.Errorf("expected ErrUsernameStartsDigit, got %v", err)
+		}
 	})
 
 	// TODO: Реализуй тест для username с недопустимыми символами
 	t.Run("invalid characters", func(t *testing.T) {
 		// TODO: Проверь "user@name", "user name", "user-name"
-		_ = v
+		err := v.ValidateUsername("user@name")
+		if !errors.Is(err, ErrUsernameInvalidChar) {
+			t.Errorf("expected ErrUsernameInvalidChar, got %v", err)
+		}
+	})
+
+	t.Run("invalid characters", func(t *testing.T) {
+		err := v.ValidateUsername("user name")
+		if !errors.Is(err, ErrUsernameInvalidChar) {
+			t.Errorf("expected ErrUsernameInvalidChar, got %v", err)
+		}
+	})
+
+	t.Run("invalid characters", func(t *testing.T) {
+		err := v.ValidateUsername("user-name")
+		if !errors.Is(err, ErrUsernameInvalidChar) {
+			t.Errorf("expected ErrUsernameInvalidChar, got %v", err)
+		}
 	})
 }
 
@@ -68,12 +115,20 @@ func TestValidator_ValidateEmail(t *testing.T) {
 			// "user@example.com",
 			// "test@test.org",
 			// "a@b.co",
+
+			"user@example.com",
+			"test@test.org",
+			"a@b.co",
+			"islam.uzakpai@narxoz.kz",
+			"iuzakbayy@gmail.com",
 		}
 
 		for _, email := range validEmails {
 			t.Run(email, func(t *testing.T) {
 				// TODO: Проверь, что ошибки нет
-				_ = v
+				if err := v.ValidateEmail(email); err != nil {
+					t.Errorf("expected %q to be valid, got %v", email, err)
+				}
 			})
 		}
 	})
@@ -84,23 +139,35 @@ func TestValidator_ValidateEmail(t *testing.T) {
 		// if !errors.Is(err, ErrEmailMissingAt) {
 		//     t.Errorf("expected ErrEmailMissingAt, got %v", err)
 		// }
-		_ = v
+		err := v.ValidateEmail("userexample.com")
+		if !errors.Is(err, ErrEmailMissingAt) {
+			t.Errorf("expected ErrEmailMissingAt, got %v", err)
+		}
 	})
 
 	t.Run("multiple @", func(t *testing.T) {
 		// TODO: Проверь email с несколькими @
-		_ = v
+		err := v.ValidateEmail("user@@example.com")
+		if !errors.Is(err, ErrEmailMultipleAt) {
+			t.Errorf("expected ErrEmailMultipleAt, got %v", err)
+		}
 	})
 
 	t.Run("empty before @", func(t *testing.T) {
 		// TODO: Проверь "@example.com"
-		_ = v
+		err := v.ValidateEmail("@example.com")
+		if !errors.Is(err, ErrEmailInvalidFormat) {
+			t.Errorf("expected ErrEmailInvalidFormat, got %v", err)
+		}
 	})
 
 	t.Run("invalid after @", func(t *testing.T) {
 		// TODO: Проверь "user@ab" (слишком короткий домен)
 		// и "user@abcd" (нет точки в домене)
-		_ = v
+		err := v.ValidateEmail("user@abcd")
+		if !errors.Is(err, ErrEmailInvalidFormat) {
+			t.Errorf("expected ErrEmailInvalidFormat, got %v", err)
+		}
 	})
 }
 
@@ -116,9 +183,12 @@ func TestValidator_ValidateAge(t *testing.T) {
 			// t.Run(fmt.Sprintf("age_%d", age), func(t *testing.T) {
 			//     ...
 			// })
-			_ = age
+			t.Run(fmt.Sprintf("age_%d", age), func(t *testing.T) {
+				if err := v.ValidateAge(age); err != nil {
+					t.Errorf("expected %q to be valid, got %v", age, err)
+				}
+			})
 		}
-		_ = v
 	})
 
 	t.Run("negative age", func(t *testing.T) {
@@ -127,17 +197,29 @@ func TestValidator_ValidateAge(t *testing.T) {
 		// if !errors.Is(err, ErrAgeNegative) {
 		//     t.Errorf("expected ErrAgeNegative, got %v", err)
 		// }
-		_ = v
+		err := v.ValidateAge(-1)
+		if !errors.Is(err, ErrAgeNegative) {
+			t.Errorf("expected ErrAgeNegative, got %v", err)
+		}
 	})
 
 	t.Run("too old", func(t *testing.T) {
 		// TODO: Проверь возраст > 150
-		_ = v
+		err := v.ValidateAge(200)
+		if !errors.Is(err, ErrAgeTooOld) {
+			t.Errorf("expected ErrAgeTooOld, got %v", err)
+		}
 	})
 
 	t.Run("edge cases", func(t *testing.T) {
 		// TODO: Проверь граничные случаи: 0 и 150 (должны быть валидны)
-		_ = v
+		if err := v.ValidateAge(0); err != nil {
+			t.Errorf("expected %q to be valid, got %v", 0, err)
+		}
+
+		if err := v.ValidateAge(150); err != nil {
+			t.Errorf("expected %q to be valid, got %v", 150, err)
+		}
 	})
 }
 
@@ -151,12 +233,19 @@ func TestValidator_ValidatePassword(t *testing.T) {
 			// "SecurePass1",
 			// "MyP4ssword",
 			// "Test1234Abc",
+			"SecurePass1",
+			"MyP4ssword",
+			"Test1234Abc",
+			"Test123456",
+			"MyPass1234",
 		}
 
 		for _, pwd := range validPasswords {
 			t.Run(pwd, func(t *testing.T) {
 				// TODO: Проверь, что ошибки нет
-				_ = v
+				if err := v.ValidatePassword(pwd); err != nil {
+					t.Errorf("expected %q to be valid, got %v", pwd, err)
+				}
 			})
 		}
 	})
@@ -167,22 +256,35 @@ func TestValidator_ValidatePassword(t *testing.T) {
 		// if !errors.Is(err, ErrPasswordTooShort) {
 		//     t.Errorf("expected ErrPasswordTooShort, got %v", err)
 		// }
-		_ = v
+
+		err := v.ValidatePassword("Short1A")
+		if !errors.Is(err, ErrPasswordTooShort) {
+			t.Errorf("expected ErrPasswordTooShort, got %v", err)
+		}
 	})
 
 	t.Run("missing digit", func(t *testing.T) {
 		// TODO: Проверь пароль без цифр
-		_ = v
+		err := v.ValidatePassword("PasswordWithoutDigits")
+		if !errors.Is(err, ErrPasswordNoDigit) {
+			t.Errorf("expected ErrPasswordNoDigit, got %v", err)
+		}
 	})
 
 	t.Run("missing uppercase", func(t *testing.T) {
 		// TODO: Проверь пароль без заглавных букв
-		_ = v
+		err := v.ValidatePassword("passwordwithoutupper1")
+		if !errors.Is(err, ErrPasswordNoUpper) {
+			t.Errorf("expected ErrPasswordNoUpper, got %v", err)
+		}
 	})
 
 	t.Run("missing lowercase", func(t *testing.T) {
 		// TODO: Проверь пароль без строчных букв
-		_ = v
+		err := v.ValidatePassword("PASSWORDWITHOUTLOWER1")
+		if !errors.Is(err, ErrPasswordNoLower) {
+			t.Errorf("expected ErrPasswordNoLower, got %v", err)
+		}
 	})
 }
 
@@ -203,8 +305,10 @@ func TestValidator_ValidateUser(t *testing.T) {
 		// if len(errs) != 0 {
 		//     t.Errorf("expected no errors, got %v", errs)
 		// }
-		_ = user
-		_ = v
+		errs := v.ValidateUser(user)
+		if len(errs) != 0 {
+			t.Errorf("expected no errors, got %v", errs)
+		}
 	})
 
 	t.Run("single error", func(t *testing.T) {
@@ -220,8 +324,10 @@ func TestValidator_ValidateUser(t *testing.T) {
 		// if len(errs) != 1 {
 		//     t.Errorf("expected 1 error, got %d", len(errs))
 		// }
-		_ = user
-		_ = v
+		errs := v.ValidateUser(user)
+		if len(errs) != 1 {
+			t.Errorf("expected 1 error, got %d", len(errs))
+		}
 	})
 
 	t.Run("multiple errors", func(t *testing.T) {
@@ -237,8 +343,10 @@ func TestValidator_ValidateUser(t *testing.T) {
 		// if len(errs) != 4 {
 		//     t.Errorf("expected 4 errors, got %d: %v", len(errs), errs)
 		// }
-		_ = user
-		_ = v
+		errs := v.ValidateUser(user)
+		if len(errs) != 4 {
+			t.Errorf("expected 4 errors, got %d: %v", len(errs), errs)
+		}
 	})
 }
 
