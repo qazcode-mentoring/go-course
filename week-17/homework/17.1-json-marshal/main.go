@@ -14,11 +14,11 @@ import (
 // - InStock -> "in_stock"
 // - Description -> "description" с omitempty
 type Product struct {
-	ID          int
-	Name        string
-	Price       float64
-	InStock     bool
-	Description string
+	ID          int     `json:"id"`
+	Name        string  `json:"name"`
+	Price       float64 `json:"price"`
+	InStock     bool    `json:"in_stock"`
+	Description string  `json:"description,omitempty"`
 }
 
 // Order представляет заказ покупателя
@@ -29,11 +29,11 @@ type Product struct {
 // - Total -> "total"
 // - CreatedAt -> "created_at"
 type Order struct {
-	OrderID   string
-	Customer  string
-	Products  []Product
-	Total     float64
-	CreatedAt time.Time
+	OrderID   string    `json:"order_id"`
+	Customer  string    `json:"customer"`
+	Products  []Product `json:"products"`
+	Total     float64   `json:"total"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // MarshalProduct сериализует продукт в JSON с отступами
@@ -42,20 +42,34 @@ func MarshalProduct(p Product) (string, error) {
 	// Параметры: (v any, prefix string, indent string)
 	// prefix = "", indent = "  " (два пробела)
 	// Верни строку и ошибку
-	return "", nil
+	data, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 // MarshalOrder сериализует заказ в JSON с отступами
 func MarshalOrder(o Order) (string, error) {
 	// TODO: используй json.MarshalIndent для сериализации заказа
 	// Параметры такие же: prefix = "", indent = "  "
-	return "", nil
+	data, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }
 
 // CalculateTotal вычисляет общую сумму заказа
 func CalculateTotal(products []Product) float64 {
 	// TODO: пройди по всем продуктам и просуммируй цены
-	return 0
+	sum := 0.0
+	for _, p := range products {
+		sum += p.Price
+	}
+
+	return sum
 }
 
 func main() {
