@@ -7,7 +7,12 @@ func AppendUnique(slice []int, value int) []int {
 	// TODO: реализуй функцию
 	// Проверь, есть ли value в slice
 	// Если нет — добавь через append
-	return slice
+	for i := 0; i < len(slice); i++ {
+		if slice[i] == value {
+			return slice
+		}
+	}
+	return append(slice, value)
 }
 
 // RemoveAt удаляет элемент по индексу
@@ -15,6 +20,11 @@ func RemoveAt(slice []int, index int) []int {
 	// TODO: реализуй функцию
 	// Проверь, что index в допустимых границах
 	// Используй append для соединения частей до и после index
+	for i, _ := range slice {
+		if i == index {
+			slice = append(slice[:index], slice[index+1:]...)
+		}
+	}
 	return slice
 }
 
@@ -22,6 +32,11 @@ func RemoveAt(slice []int, index int) []int {
 func RemoveValue(slice []int, value int) []int {
 	// TODO: реализуй функцию
 	// Найди индекс value и используй RemoveAt
+	for i, v := range slice {
+		if v == value {
+			slice = RemoveAt(slice, i)
+		}
+	}
 	return slice
 }
 
@@ -29,7 +44,11 @@ func RemoveValue(slice []int, value int) []int {
 func SumAll(nums ...int) int {
 	// TODO: реализуй функцию
 	// nums — это слайс, пройди по нему и сложи
-	return 0
+	var sum int = 0
+	for _, v := range nums {
+		sum += v
+	}
+	return sum
 }
 
 func main() {
