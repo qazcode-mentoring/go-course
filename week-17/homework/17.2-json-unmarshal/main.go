@@ -30,11 +30,15 @@ func ParseUser(jsonData string) (*User, error) {
 	// 1. Создай переменную типа User
 	// 2. Используй json.Unmarshal([]byte(jsonData), &user)
 	// 3. Верни указатель на user и ошибку
+	var user User
+	err := json.Unmarshal([]byte(jsonData), &user)
+	if err != nil {
+		return nil, err
+	}
 
 	// Подавляем предупреждение о неиспользуемом импорте
-	_ = json.Unmarshal
 
-	return nil, nil
+	return &user, nil
 }
 
 // ParseUsers парсит JSON-массив пользователей
@@ -43,14 +47,27 @@ func ParseUsers(jsonData string) ([]User, error) {
 	// 1. Создай слайс []User
 	// 2. Используй json.Unmarshal
 	// 3. Верни слайс и ошибку
-	return nil, nil
+	var users []User
+	err := json.Unmarshal([]byte(jsonData), &users)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // ParseDynamic парсит JSON неизвестной структуры в map
 func ParseDynamic(jsonData string) (map[string]any, error) {
 	// TODO: реализуй парсинг в map[string]any
 	// Это полезно когда структура JSON заранее неизвестна
-	return nil, nil
+	m := make(map[string]any)
+
+	err := json.Unmarshal([]byte(jsonData), &m)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, err
 }
 
 // ExtractField безопасно извлекает значение по ключу
@@ -58,6 +75,11 @@ func ExtractField(data map[string]any, key string) (any, bool) {
 	// TODO: извлеки значение из map по ключу
 	// Верни значение и true если ключ существует
 	// Верни nil и false если ключа нет
+	v, ok := data[key]
+	if ok {
+		return v, true
+	}
+
 	return nil, false
 }
 
@@ -69,11 +91,28 @@ func ExtractNestedField(data map[string]any, path string) (any, bool) {
 	// 3. Для промежуточных ключей ожидай map[string]any
 	// 4. Верни финальное значение или nil, false если путь не найден
 
+	keys := strings.Split(path, ".")
+	var current any = data
+
+	for _, key := range keys {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+
+		v, ok := m[key]
+		if !ok {
+			return nil, false
+		}
+
+		current = v
+	}
+
+	return current, true
+
 	// Подсказка: используй type assertion с проверкой
 	// if nested, ok := current.(map[string]any); ok { ... }
 
-	_ = strings.Split(path, ".") // раскомментируй и используй
-	return nil, false
 }
 
 // PrintUser выводит информацию о пользователе
