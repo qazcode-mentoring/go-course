@@ -126,7 +126,23 @@ func CopyFile(src, dst string) error {
 	// 4. Не забудь закрыть оба файла!
 
 	// Подавляем предупреждение об неиспользуемых импортах
-	_ = io.Copy
+	srcFile, err := os.OpenFile(src, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.OpenFile(dst, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -134,13 +150,24 @@ func CopyFile(src, dst string) error {
 func FileExists(filename string) bool {
 	// TODO: используй os.Stat
 	// os.IsNotExist(err) вернёт true если файл не существует
-	return false
+	_, err := os.Stat(filename)
+
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }
 
 // CountLines считает количество строк в файле
 func CountLines(filename string) (int, error) {
 	// TODO: используй ReadLines или bufio.Scanner напрямую
-	return 0, nil
+	strs, err := ReadLines(filename)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(strs), nil
 }
 
 // GetFileInfo возвращает информацию о файле
@@ -169,9 +196,9 @@ func main() {
 	// Очистка в конце (опционально)
 	defer func() {
 		// Раскомментируй для автоматической очистки:
-		// os.Remove(testFile)
-		// os.Remove(linesFile)
-		// os.Remove(copyFile)
+		os.Remove(testFile)
+		os.Remove(linesFile)
+		os.Remove(copyFile)
 	}()
 
 	// 1. Запись в файл
