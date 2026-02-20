@@ -11,35 +11,45 @@ type Cache struct {
 func NewCache() *Cache {
 	// TODO: реализуй функцию
 	// Не забудь инициализировать map через make
-	return &Cache{data: make(map[string]string)}
+	return &Cache{make(map[string]string)}
 }
 
 // Set сохраняет значение по ключу
 func (c *Cache) Set(key, value string) {
 	// TODO: реализуй метод
+	c.data[key] = value
 }
 
 // Get возвращает значение по ключу и флаг существования
 func (c *Cache) Get(key string) (string, bool) {
 	// TODO: реализуй метод
+	value, ok := c.data[key]
+	if ok {
+		return value, true
+	}
 	return "", false
 }
 
 // Delete удаляет значение по ключу
 func (c *Cache) Delete(key string) {
 	// TODO: реализуй метод
+	_, ok := c.data[key]
+	if ok {
+		delete(c.data, key)
+	}
 }
 
 // Clear очищает весь кэш
 func (c *Cache) Clear() {
 	// TODO: реализуй метод
 	// Можно создать новый пустой map
+	c.data = make(map[string]string)
 }
 
 // Size возвращает количество элементов в кэше
 func (c *Cache) Size() int {
 	// TODO: реализуй метод
-	return 0
+	return len(c.data)
 }
 
 func main() {

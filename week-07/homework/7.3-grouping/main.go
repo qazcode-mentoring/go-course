@@ -38,7 +38,12 @@ func GetStudentNames(groups map[int][]Student, grade int) []string {
 	// TODO: реализуй функцию
 	// Получи слайс студентов по grade
 	// Извлеки только имена
-	return nil
+	names := make([]string, 0)
+	for _, v := range groups[grade] {
+		names = append(names, v.Name)
+	}
+
+	return names
 }
 
 func main() {
@@ -54,11 +59,12 @@ func main() {
 	fmt.Println("Все студенты:", students)
 
 	groups := GroupByGrade(students)
-	fmt.Println(groups)
 	fmt.Println("\nПо классам:")
 	for grade, list := range groups {
 		fmt.Printf("  %d класс: %v\n", grade, list)
 	}
+
+	fmt.Println("\nИмена 10 класса:", GetStudentNames(groups, 10))
 
 	fmt.Println("\n=== Группировка слов ===")
 	words := []string{"apple", "apricot", "banana", "avocado", "blueberry"}
