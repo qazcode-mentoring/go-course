@@ -13,8 +13,7 @@ func ToUpper() StringProcessor {
 	// TODO: реализуй функцию
 	// Верни функцию, использующую strings.ToUpper
 	return func(s string) string {
-		_ = strings.ToUpper // подсказка
-		return s
+		return strings.ToUpper(s)
 	}
 }
 
@@ -22,7 +21,7 @@ func ToUpper() StringProcessor {
 func ToLower() StringProcessor {
 	// TODO: реализуй функцию
 	return func(s string) string {
-		return s
+		return strings.ToLower(s)
 	}
 }
 
@@ -31,7 +30,7 @@ func Trim() StringProcessor {
 	// TODO: реализуй функцию
 	// Используй strings.TrimSpace
 	return func(s string) string {
-		return s
+		return strings.TrimSpace(s)
 	}
 }
 
@@ -40,7 +39,7 @@ func AddPrefix(prefix string) StringProcessor {
 	// TODO: реализуй функцию
 	// Это замыкание — функция запоминает prefix
 	return func(s string) string {
-		return s
+		return prefix + s
 	}
 }
 
@@ -50,6 +49,9 @@ func Compose(processors ...StringProcessor) StringProcessor {
 	// TODO: реализуй функцию
 	// Верни функцию, которая применяет все процессоры по очереди
 	return func(s string) string {
+		for _, p := range processors {
+			s = p(s)
+		}
 		return s
 	}
 }
@@ -58,6 +60,9 @@ func Compose(processors ...StringProcessor) StringProcessor {
 func Pipeline(input string, processors ...StringProcessor) string {
 	// TODO: реализуй функцию
 	// Пройди по процессорам и применяй каждый к результату
+	for _, p := range processors {
+		input = p(input)
+	}
 	return input
 }
 
