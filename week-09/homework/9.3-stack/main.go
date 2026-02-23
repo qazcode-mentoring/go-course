@@ -10,13 +10,14 @@ type Stack struct {
 // NewStack создаёт и возвращает новый пустой стек
 func NewStack() *Stack {
 	// TODO: реализуй функцию
-	return &Stack{}
+	return &Stack{make([]int, 0)}
 }
 
 // Push добавляет элемент на вершину стека
 func (s *Stack) Push(value int) {
 	// TODO: реализуй метод
 	// Используй append
+	s.items = append(s.items, value)
 }
 
 // Pop удаляет и возвращает верхний элемент
@@ -25,26 +26,41 @@ func (s *Stack) Pop() (int, bool) {
 	// TODO: реализуй метод
 	// Проверь, не пуст ли стек
 	// Верни последний элемент и укороти слайс
-	return 0, false
+	if len(s.items) == 0 {
+		return 0, false
+	}
+
+	lastIndex := len(s.items) - 1
+	lastValue := s.items[lastIndex]
+	s.items = s.items[:lastIndex]
+
+	return lastValue, true
+
 }
 
 // Peek возвращает верхний элемент без удаления
 // Возвращает (value, true) или (0, false) если стек пуст
 func (s *Stack) Peek() (int, bool) {
 	// TODO: реализуй метод
-	return 0, false
+	if len(s.items) == 0 {
+		return 0, false
+	}
+	return s.items[len(s.items)-1], true
 }
 
 // IsEmpty возвращает true если стек пуст
 func (s *Stack) IsEmpty() bool {
 	// TODO: реализуй метод
+	if len(s.items) != 0 {
+		return false
+	}
 	return true
 }
 
 // Size возвращает количество элементов в стеке
 func (s *Stack) Size() int {
 	// TODO: реализуй метод
-	return 0
+	return len(s.items)
 }
 
 func main() {
