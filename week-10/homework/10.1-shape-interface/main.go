@@ -19,14 +19,15 @@ type Circle struct {
 // Area возвращает площадь круга
 func (c Circle) Area() float64 {
 	// TODO: реализуй метод
-	_ = math.Pi // подсказка
-	return 0
+	s := math.Pi * (c.Radius * c.Radius) // подсказка
+
+	return s
 }
 
 // Perimeter возвращает периметр круга
 func (c Circle) Perimeter() float64 {
 	// TODO: реализуй метод
-	return 0
+	return 2 * math.Pi * c.Radius
 }
 
 // Rectangle представляет прямоугольник
@@ -37,13 +38,13 @@ type Rectangle struct {
 // Area возвращает площадь прямоугольника
 func (r Rectangle) Area() float64 {
 	// TODO: реализуй метод
-	return 0
+	return r.Width * r.Height
 }
 
 // Perimeter возвращает периметр прямоугольника
 func (r Rectangle) Perimeter() float64 {
 	// TODO: реализуй метод
-	return 0
+	return 0.0
 }
 
 // PrintShapeInfo выводит информацию о любой фигуре
