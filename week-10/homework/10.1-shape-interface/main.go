@@ -44,7 +44,7 @@ func (r Rectangle) Area() float64 {
 // Perimeter возвращает периметр прямоугольника
 func (r Rectangle) Perimeter() float64 {
 	// TODO: реализуй метод
-	return 0.0
+	return 2 * (r.Width + r.Height)
 }
 
 // PrintShapeInfo выводит информацию о любой фигуре
@@ -52,14 +52,18 @@ func PrintShapeInfo(s Shape) {
 	// TODO: реализуй функцию
 	// Выведи тип фигуры, площадь и периметр
 	// Подсказка: для типа используй fmt.Printf("%T", s)
-	fmt.Println(s)
+	fmt.Printf("тип фигуры: %T, площадь: %.2f, периметр: %.2f", s, s.Area(), s.Perimeter())
 }
 
 // TotalArea возвращает сумму площадей всех фигур
 func TotalArea(shapes []Shape) float64 {
 	// TODO: реализуй функцию
 	// Пройди по всем фигурам и сложи их площади
-	return 0
+	var total float64
+	for i := 0; i < len(shapes); i++ {
+		total += shapes[i].Area()
+	}
+	return total
 }
 
 func main() {
@@ -72,6 +76,8 @@ func main() {
 		Circle{Radius: 2},
 		Rectangle{Width: 10, Height: 5},
 	}
+
+	fmt.Printf("shapes[1]: %v\n", shapes[1])
 
 	// Выводим информацию о каждой
 	fmt.Println("Информация о фигурах:")
