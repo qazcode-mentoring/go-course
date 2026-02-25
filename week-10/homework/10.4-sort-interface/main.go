@@ -17,18 +17,19 @@ type ByAge []Person
 // Len возвращает количество элементов
 func (a ByAge) Len() int {
 	// TODO: реализуй метод
-	return 0
+	return len(a)
 }
 
 // Swap меняет элементы местами
 func (a ByAge) Swap(i, j int) {
 	// TODO: реализуй метод
+	a[i], a[j] = a[j], a[i]
 }
 
 // Less возвращает true если элемент i должен быть перед j (по возрасту)
 func (a ByAge) Less(i, j int) bool {
 	// TODO: реализуй метод
-	return false
+	return a[i].Age < a[j].Age
 }
 
 // ByName реализует sort.Interface для сортировки по имени
@@ -37,19 +38,20 @@ type ByName []Person
 // Len возвращает количество элементов
 func (a ByName) Len() int {
 	// TODO: реализуй метод
-	return 0
+	return len(a)
 }
 
 // Swap меняет элементы местами
 func (a ByName) Swap(i, j int) {
 	// TODO: реализуй метод
+	a[i], a[j] = a[j], a[i]
 }
 
 // Less возвращает true если элемент i должен быть перед j (по имени)
 func (a ByName) Less(i, j int) bool {
 	// TODO: реализуй метод
 	// Для строк можно использовать < для лексикографического сравнения
-	return false
+	return a[i].Name < a[j].Name
 }
 
 func main() {
