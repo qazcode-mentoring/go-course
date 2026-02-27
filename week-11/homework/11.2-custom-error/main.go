@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ValidationError представляет ошибку валидации
@@ -15,7 +16,7 @@ type ValidationError struct {
 func (e ValidationError) Error() string {
 	// TODO: реализуй метод
 	// Формат: "поле 'Field': Message"
-	return ""
+	return fmt.Sprintf("поле '%v': %v", e.Field, e.Message)
 }
 
 // NotFoundError представляет ошибку "не найдено"
@@ -28,7 +29,7 @@ type NotFoundError struct {
 func (e NotFoundError) Error() string {
 	// TODO: реализуй метод
 	// Формат: "Resource с ID X не найден"
-	return ""
+	return fmt.Sprintf("%v c ID %d не найден", e.Resource, e.ID)
 }
 
 // ValidateAge проверяет корректность возраста
@@ -37,6 +38,19 @@ func ValidateAge(age int) error {
 	// Если age < 0 — вернуть ValidationError
 	// Если age > 150 — вернуть ValidationError
 	// Иначе nil
+	if age < 0 {
+		return ValidationError{
+			Field:   "age",
+			Message: "не может быть отрицательным",
+		}
+	}
+	if age > 150 {
+		return ValidationError{
+			Field:   "age",
+			Message: "слишком большой возраст",
+		}
+	}
+
 	return nil
 }
 
@@ -46,6 +60,19 @@ func ValidateEmail(email string) error {
 	// Если email пустой — вернуть ValidationError
 	// Если нет @ — вернуть ValidationError
 	// Иначе nil
+	if email == "" {
+		return ValidationError{
+			Field:   "email",
+			Message: "напишите свою почту",
+		}
+	}
+	if !strings.Contains(email, "@") {
+		return ValidationError{
+			Field:   "email",
+			Message: "почта введена некоректно",
+		}
+	}
+
 	return nil
 }
 
@@ -54,7 +81,13 @@ func FindUser(id int) (string, error) {
 	// TODO: реализуй функцию
 	// Известные пользователи: 1 -> "Алексей", 2 -> "Мария"
 	// Если не найден — вернуть NotFoundError
-	return "", nil
+	if id == 1 {
+		return "Алексей", nil
+	}
+	if id == 2 {
+		return "Мария", nil
+	}
+	return "", NotFoundError{Resource: "User", ID: id}
 }
 
 func main() {
