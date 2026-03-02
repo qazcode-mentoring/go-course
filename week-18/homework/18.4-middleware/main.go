@@ -32,9 +32,15 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		// 2. Создай statusRecorder: rec := &statusRecorder{ResponseWriter: w, status: 200}
 		// 3. Вызови следующий handler: next.ServeHTTP(rec, r)
 		// 4. Залогируй результат: log.Printf("%s %s %d %v", r.Method, r.URL.Path, rec.status, time.Since(start))
+		start := time.Now()
+		rec := &statusRecorder{
+			ResponseWriter: w,
+			status:         200,
+		}
 
-		// Временная заглушка — просто передаём управление
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(rec, r)
+
+		log.Printf("%s %s %d %v", r.Method, r.URL.Path, rec.status, time.Since(start))
 	})
 }
 
@@ -52,8 +58,15 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 		//        }
 		//    }()
 		// 2. Вызови следующий handler: next.ServeHTTP(w, r)
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("Panic recovered: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": "internal server error"})
+			}
+		}()
 
-		// Временная заглушка — просто передаём управление
 		next.ServeHTTP(w, r)
 	})
 }
@@ -67,8 +80,10 @@ func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 	//     handler = middlewares[i](handler)
 	// }
 	// return handler
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
 
-	// Временная заглушка
 	return handler
 }
 
@@ -130,7 +145,7 @@ func main() {
 
 	// TODO: оберни mux в цепочку middleware
 	// handler := Chain(mux, LoggingMiddleware, RecoveryMiddleware)
-	handler := mux // временная заглушка
+	handler := Chain(mux, LoggingMiddleware, RecoveryMiddleware)
 
 	addr := ":8080"
 	fmt.Printf("Server starting on %s\n", addr)

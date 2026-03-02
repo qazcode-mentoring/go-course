@@ -1,0 +1,54 @@
+1. В чём разница между `http.Handle` и `http.HandleFunc`? Когда использовать каждый?
+http.Handle принимает эндпоинт и handler. Если к этому эндпоинту придет какой то запрос, вызови handler.http.HandleFunc делает тоже самое, только он принимает
+обычную функцию и грубо говоря превращает в handler. Зачастую используется HandleFunc, потому что это быстро. Handle используется если есть кастомный тип который
+реализует ServeHTTP
+
+2. Почему важно устанавливать заголовки (`w.Header().Set(...)`) ДО вызова `w.WriteHeader()` или `w.Write()`? Что произойдёт, если сделать наоборот?
+Сначала нужно сказать браузеру какой тип будет у запроса или у ответа. Если вызвать первее w.WriteHeader() или w.Write(), го сам определит header и status
+
+3. Объясни новый синтаксис паттернов в Go 1.22+ (например, `"GET /users/{id}"`). Как получить значение `{id}` внутри обработчика?
+idStr := r.PathValue("id") вот так можно достать id с url
+
+4. Что такое middleware и зачем он нужен? Приведи примеры задач, которые решаются через middleware.
+middleware это обертка-обработчик который стоит поверх handler. То есть сначала запрос с клиента попадает в middleware, только после этого запрос попадает в handler.
+Это помогает решать проблему дублирования кода. То есть условно легче написать middleware один раз и несколько раз его использовать, чем дублировать код
+middleware используются для логирования, jwt-token, recovery (panic)
+
+func JWTMiddleware() gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		tokenString := c.GetHeader("Authorization")
+		if tokenString == "" {
+			c.JSON(401, gin.H{"error": "Authorization token is missed"})
+			c.Abort()
+			return
+		}
+
+		token, err := auth.ValidateToken(tokenString)
+		if err != nil || !token.Valid {
+			c.JSON(401, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok && !token.Valid {
+			c.JSON(401, gin.H{"error": "Invalid claims"})
+			c.Abort()
+			return
+		}
+
+		userId, ok := claims["user_id"].(float64)
+		if !ok {
+			c.JSON(401, gin.H{"error": "Invalid user id type"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", uint(userId))
+
+		c.Next()
+	})
+}
+
+5. Почему для production-сервера рекомендуется создавать `http.Server` с таймаутами вместо использования `http.ListenAndServe(":8080", nil)`?
+http.ListenAndServe(":8080", nil) если вот так написать в проде, то по сути мы ничего не контролируем (таймауты, отмена, graceful shutdown, и.т.д)
