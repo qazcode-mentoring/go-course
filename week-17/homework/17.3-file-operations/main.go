@@ -12,13 +12,23 @@ import (
 func ReadFile(filename string) (string, error) {
 	// TODO: используй os.ReadFile для чтения файла
 	// Преобразуй []byte в string перед возвратом
-	return "", nil
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), err
 }
 
 // WriteFile записывает строку в файл (создаёт или перезаписывает)
 func WriteFile(filename string, content string) error {
 	// TODO: используй os.WriteFile
 	// Права доступа: 0644
+	err := os.WriteFile(filename, []byte(content), 0644)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -32,9 +42,26 @@ func ReadLines(filename string) ([]string, error) {
 	// 5. Проверь scanner.Err() перед возвратом
 
 	// Подавляем предупреждение о неиспользуемом импорте
-	_ = bufio.NewScanner
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var strs []string
+	for scanner.Scan() {
+		str := scanner.Text()
+		strs = append(strs, str)
+	}
+
+	if scanner.Err() != nil {
+		return nil, scanner.Err()
+	}
+
+	return strs, nil
 }
 
 // WriteLines записывает слайс строк в файл
@@ -45,6 +72,25 @@ func WriteLines(filename string, lines []string) error {
 	// 3. Создай bufio.Writer для буферизованной записи
 	// 4. Запиши каждую строку + "\n"
 	// 5. Не забудь writer.Flush() перед выходом!
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, err = writer.WriteString(line + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -55,6 +101,23 @@ func AppendToFile(filename string, content string) error {
 	//    os.O_APPEND|os.O_WRONLY|os.O_CREATE
 	// 2. Права доступа: 0644
 	// 3. Запиши content + "\n"
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	_, err = writer.WriteString(content + "\n")
+	if err != nil {
+		return err
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -67,7 +130,23 @@ func CopyFile(src, dst string) error {
 	// 4. Не забудь закрыть оба файла!
 
 	// Подавляем предупреждение об неиспользуемых импортах
-	_ = io.Copy
+	srcFile, err := os.OpenFile(src, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.OpenFile(dst, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -75,13 +154,24 @@ func CopyFile(src, dst string) error {
 func FileExists(filename string) bool {
 	// TODO: используй os.Stat
 	// os.IsNotExist(err) вернёт true если файл не существует
-	return false
+	_, err := os.Stat(filename)
+
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }
 
 // CountLines считает количество строк в файле
 func CountLines(filename string) (int, error) {
 	// TODO: используй ReadLines или bufio.Scanner напрямую
-	return 0, nil
+	strs, err := ReadLines(filename)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(strs), nil
 }
 
 // GetFileInfo возвращает информацию о файле
@@ -110,9 +200,9 @@ func main() {
 	// Очистка в конце (опционально)
 	defer func() {
 		// Раскомментируй для автоматической очистки:
-		// os.Remove(testFile)
-		// os.Remove(linesFile)
-		// os.Remove(copyFile)
+		os.Remove(testFile)
+		os.Remove(linesFile)
+		os.Remove(copyFile)
 	}()
 
 	// 1. Запись в файл

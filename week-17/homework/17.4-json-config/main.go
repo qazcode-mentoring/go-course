@@ -52,10 +52,19 @@ func LoadConfig(filename string) (*Config, error) {
 	// При ошибке используй fmt.Errorf с %w для wrapping
 
 	// Подавляем предупреждение о неиспользуемых импортах
-	_ = os.ReadFile
-	_ = json.Unmarshal
+	file, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read: %w", err)
+	}
 
-	return nil, nil
+	cfg := Config{}
+
+	err = json.Unmarshal(file, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", err)
+	}
+
+	return &cfg, nil
 }
 
 // SaveConfig сохраняет конфигурацию в JSON-файл с форматированием
@@ -64,6 +73,16 @@ func SaveConfig(filename string, cfg *Config) error {
 	// 1. Сериализуй конфигурацию с помощью json.MarshalIndent
 	// 2. Запиши в файл с помощью os.WriteFile
 	// Права доступа: 0644
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to parse: %w", err)
+	}
+
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write: %w", err)
+	}
+
 	return nil
 }
 
@@ -81,6 +100,30 @@ func ValidateConfig(cfg *Config) error {
 	// Собери все ошибки в слайс и верни их вместе
 
 	var errors []string
+
+	if cfg.AppName == "" {
+		errors = append(errors, "app_name обязателен")
+	}
+
+	if cfg.Server.Host == "" {
+		errors = append(errors, "server_host обязателен")
+	}
+
+	if cfg.Server.Port < 1 || cfg.Server.Port > 65535 {
+		errors = append(errors, "недопустимое значение для server_port")
+	}
+
+	if cfg.Database.Host == "" {
+		errors = append(errors, "database_host обязателен")
+	}
+
+	if cfg.Database.Port < 1 || cfg.Database.Port > 65535 {
+		errors = append(errors, "недопустимое значение для database_port")
+	}
+
+	if cfg.Database.User == "" {
+		errors = append(errors, "database_user обязателен")
+	}
 
 	// Пример проверки:
 	// if cfg.AppName == "" {
@@ -102,6 +145,29 @@ func ApplyDefaults(cfg *Config) {
 	// - Database.SSLMode: "disable" (если пустой)
 	// - Logging.Level: "info" (если пустой)
 	// - Logging.Format: "json" (если пустой)
+	if cfg.Server.ReadTimeout == 0 {
+		cfg.Server.ReadTimeout = 30
+	}
+
+	if cfg.Server.WriteTimeout == 0 {
+		cfg.Server.WriteTimeout = 30
+	}
+
+	if cfg.Database.Port == 0 {
+		cfg.Database.Port = 5432
+	}
+
+	if cfg.Database.SSLMode == "" {
+		cfg.Database.SSLMode = "disabled"
+	}
+
+	if cfg.Logging.Level == "" {
+		cfg.Logging.Level = "info"
+	}
+
+	if cfg.Logging.Format == "" {
+		cfg.Logging.Format = "json"
+	}
 }
 
 // NewDefaultConfig возвращает конфигурацию со значениями по умолчанию
