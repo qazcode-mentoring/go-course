@@ -176,8 +176,6 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 func writeError(w http.ResponseWriter, status int, message string) {
 	// TODO: реализуй функцию
 	// Используй writeJSON с ErrorResponse{Error: message}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
 	writeJSON(w, status, ErrorResponse{Error: message})
 }
 
