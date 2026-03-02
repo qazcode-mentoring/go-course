@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // SentMessage записывает информацию об отправленном сообщении
@@ -43,13 +45,31 @@ func (m *MockUserRepository) GetByID(id int) (*User, error) {
 	// Если m.err != nil, верни nil, m.err
 	// Иначе ищи пользователя в m.users
 	// Если не найден, верни nil, ErrUserNotFound
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	user, ok := m.users[id]
+	if !ok {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
 }
 
 func (m *MockUserRepository) GetByEmail(email string) (*User, error) {
 	// TODO: Реализуй метод
 	// Аналогично GetByID, но ищи в m.usersByEmail
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	user, ok := m.usersByEmail[email]
+	if !ok {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
 }
 
 // MockMessageSender — мок для MessageSender
@@ -79,6 +99,16 @@ func (m *MockMessageSender) Send(to, subject, body string) error {
 	// TODO: Реализуй метод
 	// Если m.err != nil, верни m.err
 	// Иначе добавь сообщение в m.sentMessages и верни nil
+	if m.err != nil {
+		return m.err
+	}
+
+	m.sentMessages = append(m.sentMessages, SentMessage{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+	})
+
 	return nil
 }
 
@@ -95,13 +125,15 @@ func TestNotificationService_NotifyUser_Success(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Hello!")
-
+	err := service.NotifyUser(1, "Hello!")
 	// Assert
 	// TODO: Проверь, что ошибки нет
 	// TODO: Проверь, что было отправлено 1 сообщение
 	// TODO: Проверь, что сообщение отправлено на правильный email
 
-	_ = service
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, len(mockSender.sentMessages))
+	assert.Equal(t, "alice@example.com", mockSender.sentMessages[0].To)
 }
 
 func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
@@ -112,13 +144,14 @@ func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser для несуществующего пользователя
-
+	err := service.NotifyUser(-1, "Hello!")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Проверь, что ошибка содержит ErrUserNotFound (используй errors.Is)
 	// TODO: Проверь, что сообщения НЕ были отправлены
-
-	_ = service
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, ErrUserNotFound))
+	assert.Equal(t, 0, len(mockSender.sentMessages))
 }
 
 func TestNotificationService_NotifyUser_SendError(t *testing.T) {
@@ -133,12 +166,12 @@ func TestNotificationService_NotifyUser_SendError(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Test")
-
+	err := service.NotifyUser(1, "Test")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Пользователь найден, но отправка не удалась
-
-	_ = service
+	assert.Error(t, err)
+	assert.Equal(t, 0, len(mockSender.sentMessages))
 }
 
 func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
@@ -152,41 +185,75 @@ func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
 	// Act
 	message := "Important notification!"
 	// TODO: Вызови service.NotifyUser(1, message)
-
+	err := service.NotifyUser(1, message)
 	// Assert
 	// TODO: Проверь содержимое отправленного сообщения
 	// - To должен быть "charlie@example.com"
 	// - Subject должен содержать имя пользователя
 	// - Body должен быть равен message
-
-	_ = service
-	_ = message
+	assert.Equal(t, "charlie@example.com", mockSender.sentMessages[0].To)
+	assert.Contains(t, mockSender.sentMessages[0].Subject, "Charlie")
+	assert.Equal(t, message, mockSender.sentMessages[0].Body)
+	assert.NoError(t, err)
 }
 
 // === Тесты для NotifyByEmail ===
 
 func TestNotificationService_NotifyByEmail_Success(t *testing.T) {
 	// TODO: Arrange — создай моки с пользователем
+	mockRepo := NewMockUserRepository()
+	mockSender := NewMockMessageSender()
+	service := NewNotificationService(mockRepo, mockSender)
 
+	mockRepo.AddUser(&User{
+		ID:    1,
+		Name:  "Joel Miller",
+		Email: "joelm@example.com",
+	})
 	// TODO: Act — вызови NotifyByEmail
-
+	err := service.NotifyByEmail("joelm@example.com", "Hello from Ellie..")
 	// TODO: Assert — проверь успешную отправку
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(mockSender.sentMessages))
+	assert.Equal(t, "joelm@example.com", mockSender.sentMessages[0].To)
 }
 
 func TestNotificationService_NotifyByEmail_UserNotFound(t *testing.T) {
 	// TODO: Arrange — создай моки БЕЗ пользователя с искомым email
+	mockRepo := NewMockUserRepository()
+	mockSender := NewMockMessageSender()
+	service := NewNotificationService(mockRepo, mockSender)
 
+	mockRepo.AddUser(&User{
+		ID:    1,
+		Name:  "Joel Miller",
+		Email: "",
+	})
 	// TODO: Act — вызови NotifyByEmail с несуществующим email
-
+	err := service.NotifyByEmail("joelm@example.com", "Hello from Ellie..")
 	// TODO: Assert — проверь, что вернулась ошибка
+	assert.Error(t, err)
 }
 
 func TestNotificationService_NotifyByEmail_SendError(t *testing.T) {
 	// TODO: Arrange — создай моки, настрой ошибку в sender
+	mockRepo := NewMockUserRepository()
+	mockSender := NewMockMessageSender()
+	service := NewNotificationService(mockRepo, mockSender)
 
+	mockRepo.AddUser(&User{
+		ID:    1,
+		Name:  "Joel Miller",
+		Email: "joelm@example.com",
+	})
+
+	sendErr := errors.New("ошибка отправки")
+	mockSender.SetError(sendErr)
 	// TODO: Act — вызови NotifyByEmail
+	err := service.NotifyByEmail("joelm@example.com", "Hello from Ellie..")
 
 	// TODO: Assert — проверь, что вернулась ошибка отправки
+	assert.ErrorIs(t, err, sendErr)
 }
 
 // === Тесты для BroadcastToUsers ===
@@ -203,12 +270,13 @@ func TestNotificationService_BroadcastToUsers_AllSuccess(t *testing.T) {
 
 	// Act
 	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
-
+	sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
 	// Assert
 	// TODO: Проверь, что sent == 3, failed == 0
 	// TODO: Проверь, что отправлено 3 сообщения
-
-	_ = service
+	assert.Equal(t, 3, sent)
+	assert.Equal(t, 0, failed)
+	assert.Equal(t, 3, len(mockSender.sentMessages))
 }
 
 func TestNotificationService_BroadcastToUsers_SomeNotFound(t *testing.T) {
@@ -222,11 +290,11 @@ func TestNotificationService_BroadcastToUsers_SomeNotFound(t *testing.T) {
 
 	// Act
 	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
-
+	sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
 	// Assert
 	// TODO: Проверь, что sent == 1, failed == 2
-
-	_ = service
+	assert.Equal(t, 1, sent)
+	assert.Equal(t, 2, failed)
 }
 
 func TestNotificationService_BroadcastToUsers_SendErrors(t *testing.T) {
@@ -245,11 +313,12 @@ func TestNotificationService_BroadcastToUsers_SendErrors(t *testing.T) {
 
 	// Act
 	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2}, "Broadcast!")
+	sent, failed := service.BroadcastToUsers([]int{1, 2}, "Broadcast!")
 
 	// Assert
 	// TODO: Проверь, что sent == 0, failed == 2
-
-	_ = service
+	assert.Equal(t, 0, sent)
+	assert.Equal(t, 2, failed)
 }
 
 func TestNotificationService_BroadcastToUsers_EmptyList(t *testing.T) {
@@ -260,10 +329,10 @@ func TestNotificationService_BroadcastToUsers_EmptyList(t *testing.T) {
 
 	// Act
 	// TODO: sent, failed := service.BroadcastToUsers([]int{}, "Broadcast!")
-
+	sent, failed := service.BroadcastToUsers([]int{}, "Broadcast!")
 	// Assert
 	// TODO: Проверь, что sent == 0, failed == 0
 	// TODO: Проверь, что сообщения не отправлялись
-
-	_ = service
+	assert.Equal(t, 0, sent)
+	assert.Equal(t, 0, failed)
 }

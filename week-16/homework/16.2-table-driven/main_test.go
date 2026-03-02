@@ -32,17 +32,20 @@ func TestCalculator_Add(t *testing.T) {
 		// {"mixed signs", -2, 5, 3},
 		// {"with zero", 5, 0, 5},
 		// {"decimals", 1.5, 2.5, 4.0},
+		{"positive numbers", 2, 5, 7},
+		{"negative numbers", -2, -5, -7},
+		{"mixed signs", -2, 7, 5},
+		{"with zero", 5, 0, 5},
+		{"decimals", 1.5, 2.5, 4.0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// TODO: Реализуй проверку
-			// result := calc.Add(tt.a, tt.b)
-			// if result != tt.expected {
-			//     t.Errorf("Add(%.2f, %.2f) = %.2f; want %.2f",
-			//         tt.a, tt.b, result, tt.expected)
-			// }
-			_ = calc // убери эту строку после реализации
+			result := calc.Add(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("Add(%.2f, %.2f) = %.2f; want %.2f", tt.a, tt.b, result, tt.expected)
+			}
 		})
 	}
 }
@@ -62,12 +65,20 @@ func TestCalculator_Subtract(t *testing.T) {
 		// {"negative result", 3, 5, -2},
 		// {"subtract zero", 5, 0, 5},
 		// {"both negative", -2, -3, 1},
+		{"positive numbers", 5, 2, 3},
+		{"negative numbers", -2, -5, 3},
+		{"mixed signs", -2, 7, -9},
+		{"with zero", 5, 0, 5},
+		{"decimals", 1.5, 2.5, -1.0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// TODO: Реализуй проверку
-			_ = calc
+			result := calc.Subtract(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("Subtract(%.2f, %.2f) = %.2f; want %.2f", tt.a, tt.b, result, tt.expected)
+			}
 		})
 	}
 }
@@ -87,12 +98,21 @@ func TestCalculator_Multiply(t *testing.T) {
 		// - умножение на 1
 		// - отрицательные числа
 		// - дробные числа
+		{"positive numbers", 5, 2, 10},
+		{"negative numbers", -2, -5, 10},
+		{"mixed signs", -2, 7, -14},
+		{"with zero", 5, 0, 0},
+		{"decimals", 1.5, 2.5, 3.75},
+		{"multiply to 1", 5, 1, 5},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// TODO: Реализуй проверку
-			_ = calc
+			result := calc.Multiply(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("Multiply(%.2f, %.2f) = %.2f; want %.2f", tt.a, tt.b, result, tt.expected)
+			}
 		})
 	}
 }
@@ -114,6 +134,11 @@ func TestCalculator_Divide(t *testing.T) {
 		// {"divide zero", 0, 5, 0, false},
 		// {"negative divisor", 10, -2, -5, false},
 		// {"both negative", -10, -2, 5, false},
+		{"normal division", 10, 2, 5, false},
+		{"division by zero", 10, 0, 0, true},
+		{"divide zero", 0, 5, 0, false},
+		{"negative divisor", 10, -2, -5, false},
+		{"both negative", -10, -2, 5, false},
 	}
 
 	for _, tt := range tests {
@@ -136,7 +161,21 @@ func TestCalculator_Divide(t *testing.T) {
 			//     t.Errorf("Divide(%.2f, %.2f) = %.2f; want %.2f",
 			//         tt.a, tt.b, result, tt.expected)
 			// }
-			_ = calc
+			result, err := calc.Divide(tt.a, tt.b)
+			if tt.expectErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("Divide(%.2f, %.2f = %.2f); want %.2f", tt.a, tt.b, result, tt.expected)
+			}
 		})
 	}
 }
@@ -157,6 +196,10 @@ func TestCalculator_Power(t *testing.T) {
 		// - степень 1
 		// - отрицательную степень (2^-1 = 0.5)
 		// - дробную степень (4^0.5 = 2)
+		{"degree 0", 5, 0, 1},
+		{"degree 1", 5, 1, 5},
+		{"negative degree", 2, -1, 0.5},
+		{"fractional degree", 4, 0.5, 2},
 	}
 
 	for _, tt := range tests {
@@ -168,7 +211,10 @@ func TestCalculator_Power(t *testing.T) {
 			//     t.Errorf("Power(%.2f, %.2f) = %.4f; want %.4f",
 			//         tt.base, tt.exp, result, tt.expected)
 			// }
-			_ = calc
+			result := calc.Power(tt.base, tt.exp)
+			if !almostEqual(result, tt.expected, 0.0001) {
+				t.Errorf("Power(%.2f, %.2f) = %.4f; want %.4f", tt.base, tt.exp, result, tt.expected)
+			}
 		})
 	}
 }
@@ -189,13 +235,32 @@ func TestCalculator_Sqrt(t *testing.T) {
 		// {"zero", 0, 0, false},
 		// {"non-perfect square", 2, 1.4142, false}, // используй almostEqual
 		// {"negative number", -1, 0, true},
+
+		{"perfect square", 16, 4, false},
+		{"zero", 0, 0, false},
+		{"non-perfect square", 2, 1.4142, false}, // используй almostEqual
+		{"negative number", -1, 0, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// TODO: Реализуй проверку с обработкой ошибок
 			// Используй almostEqual для сравнения результата
-			_ = calc
+			result, err := calc.Sqrt(tt.x)
+			if tt.expectErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+
+			if !almostEqual(result, tt.expected, 0.0001) {
+				t.Errorf("Sqrt(%.2f) = %.2f; want %.2f", tt.x, result, tt.expected)
+			}
 		})
 	}
 }
