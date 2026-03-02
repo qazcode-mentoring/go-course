@@ -109,7 +109,11 @@ func AppendToFile(filename string, content string) error {
 
 	writer := bufio.NewWriter(file)
 	_, err = writer.WriteString(content + "\n")
+	if err != nil {
+		return err
+	}
 
+	err = writer.Flush()
 	if err != nil {
 		return err
 	}
