@@ -14,10 +14,7 @@ func GetContact(book map[string]string, name string) (string, bool) {
 	// TODO: реализуй функцию
 	// Используй синтаксис value, ok := map[key]
 	value, ok := book[name]
-	if ok {
-		return value, ok
-	}
-	return "", false
+	return value, ok
 }
 
 // UpdateContact обновляет номер существующего контакта

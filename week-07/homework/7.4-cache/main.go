@@ -11,7 +11,7 @@ type Cache struct {
 func NewCache() *Cache {
 	// TODO: реализуй функцию
 	// Не забудь инициализировать map через make
-	return &Cache{make(map[string]string)}
+	return &Cache{data: make(map[string]string)}
 }
 
 // Set сохраняет значение по ключу
@@ -24,19 +24,13 @@ func (c *Cache) Set(key, value string) {
 func (c *Cache) Get(key string) (string, bool) {
 	// TODO: реализуй метод
 	value, ok := c.data[key]
-	if ok {
-		return value, true
-	}
-	return "", false
+	return value, ok
 }
 
 // Delete удаляет значение по ключу
 func (c *Cache) Delete(key string) {
 	// TODO: реализуй метод
-	_, ok := c.data[key]
-	if ok {
-		delete(c.data, key)
-	}
+	delete(c.data, key)
 }
 
 // Clear очищает весь кэш

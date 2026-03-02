@@ -15,7 +15,7 @@ func WordCount(text string) map[string]int {
 
 	for i := 0; i < len(str); i++ {
 		word := str[i]
-		counts[word] += 1
+		counts[word]++
 	}
 
 	return counts
@@ -40,7 +40,7 @@ func MostFrequent(text string) string {
 	wordCount := WordCount(text)
 
 	var frequentWord string
-	maxCount := 1
+	maxCount := 0
 	for key, value := range wordCount {
 		if maxCount < value {
 			frequentWord = key
