@@ -41,7 +41,7 @@ func TestIsPalindrome(t *testing.T) {
 
 	// TODO: Проверь палиндром "level"
 	if !IsPalindrome("level") {
-		t.Error("IsPalindrome(\"radar\") should be true")
+		t.Error("IsPalindrome(\"level\") should be true")
 	}
 	// TODO: Проверь не-палиндром "hello"
 	if IsPalindrome("hello") {
@@ -69,7 +69,7 @@ func TestCountWords(t *testing.T) {
 	// TODO: Проверь пустую строку (должно быть 0 слов)
 	result = CountWords("")
 	if result != 0 {
-		t.Errorf("CountWords(%q) = %d; want %d", "", result, 2)
+		t.Errorf("CountWords(%q) = %d; want %d", "", result, 0)
 	}
 	// TODO: Проверь строку с множественными пробелами
 	// "  multiple   spaces  " должно дать 2 слова
