@@ -208,7 +208,7 @@ func (p *WorkerPool) Shutdown(timeout time.Duration) error {
 	p.mu.Lock()
 	p.stopped = true
 	close(p.jobs)
-	p.cancelFunc()
+	p.mu.Unlock()
 
 	doneCh := make(chan interface{})
 	go func() {
@@ -216,12 +216,12 @@ func (p *WorkerPool) Shutdown(timeout time.Duration) error {
 		p.workerWg.Wait()
 		close(p.results)
 	}()
-	p.mu.Unlock()
 
 	select {
 	case <-doneCh:
 		return nil
 	case <-time.After(timeout):
+		p.cancelFunc()
 		return fmt.Errorf("timeout error")
 	}
 

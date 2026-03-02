@@ -43,8 +43,7 @@ func longRunningTask(ctx context.Context, taskID int, steps int, stepDuration ti
 		select {
 		case <-ctx.Done():
 			return completedSteps, ctx.Err()
-		default:
-			time.Sleep(stepDuration)
+		case <-time.After(stepDuration):
 			completedSteps++
 		}
 	}

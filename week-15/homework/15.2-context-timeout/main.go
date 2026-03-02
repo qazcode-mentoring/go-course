@@ -75,6 +75,10 @@ func fetchWithTimeout(ctx context.Context, url string, timeout time.Duration) (R
 	defer cancel()
 
 	response, err := simulateHTTPRequest(ctx, url)
+	if err != nil {
+		return Response{}, err
+	}
+
 	if response.StatusCode == 500 {
 		return Response{}, fmt.Errorf("server error: 500, %w", err)
 	}

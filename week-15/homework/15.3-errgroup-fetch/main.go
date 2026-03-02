@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 	// Раскомментируй после реализации
-	// "golang.org/x/sync/errgroup"
-
 	"golang.org/x/sync/errgroup"
 )
 
