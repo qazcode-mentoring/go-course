@@ -172,8 +172,6 @@ func listUsersHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// 1. Получи всех пользователей: users := storage.GetAll()
 	// 2. Отправь JSON ответ: writeJSON(w, http.StatusOK, users)
-	_ = r
-	_ = w
 	users := storage.GetAll()
 	writeJSON(w, http.StatusOK, users)
 }
