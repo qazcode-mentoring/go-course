@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Storage — интерфейс для хранилища ключ-значение
 type Storage interface {
@@ -24,23 +26,31 @@ func NewMemoryStorage() *MemoryStorage {
 // Set сохраняет значение по ключу
 func (m *MemoryStorage) Set(key, value string) {
 	// TODO: реализуй метод
+	m.data[key] = value
 }
 
 // Get возвращает значение по ключу
 func (m *MemoryStorage) Get(key string) (string, bool) {
 	// TODO: реализуй метод
-	return "", false
+	val, ok := m.data[key]
+	return val, ok
 }
 
 // Delete удаляет значение по ключу
 func (m *MemoryStorage) Delete(key string) {
 	// TODO: реализуй метод
+	delete(m.data, key)
 }
 
 // Keys возвращает все ключи
 func (m *MemoryStorage) Keys() []string {
 	// TODO: реализуй метод
-	return nil
+	keys := make([]string, 0, len(m.data))
+
+	for k := range m.data {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // KeyValue — пара ключ-значение для SliceStorage
@@ -56,7 +66,7 @@ type SliceStorage struct {
 // NewSliceStorage создаёт новое хранилище на основе слайса
 func NewSliceStorage() *SliceStorage {
 	// TODO: реализуй функцию
-	return &SliceStorage{}
+	return &SliceStorage{items: make([]KeyValue, 0)}
 }
 
 // Set сохраняет значение (обновляет если ключ существует)
@@ -64,23 +74,48 @@ func (s *SliceStorage) Set(key, value string) {
 	// TODO: реализуй метод
 	// Если ключ существует — обнови значение
 	// Иначе — добавь новую пару
+	existKey := false
+	for i := range s.items {
+		if s.items[i].Key == key {
+			existKey = true
+			s.items[i].Value = value
+		}
+	}
+	if !existKey {
+		s.items = append(s.items, KeyValue{key, value})
+	}
 }
 
 // Get возвращает значение по ключу
 func (s *SliceStorage) Get(key string) (string, bool) {
 	// TODO: реализуй метод
+	for i := range s.items {
+		if s.items[i].Key == key {
+			return s.items[i].Value, true
+		}
+	}
 	return "", false
 }
 
 // Delete удаляет значение по ключу
 func (s *SliceStorage) Delete(key string) {
 	// TODO: реализуй метод
+	for i := range s.items {
+		if s.items[i].Key == key {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			return
+		}
+	}
 }
 
 // Keys возвращает все ключи
 func (s *SliceStorage) Keys() []string {
 	// TODO: реализуй метод
-	return nil
+	keys := make([]string, 0)
+	for i := range s.items {
+		keys = append(keys, s.items[i].Key)
+	}
+	return keys
 }
 
 // CopyStorage копирует все данные из одного Storage в другой
@@ -88,6 +123,13 @@ func CopyStorage(from, to Storage) {
 	// TODO: реализуй функцию
 	// Получи все ключи из from
 	// Для каждого ключа скопируй значение в to
+	keys := from.Keys()
+
+	for _, key := range keys {
+		if val, ok := from.Get(key); ok {
+			to.Set(key, val)
+		}
+	}
 }
 
 func main() {

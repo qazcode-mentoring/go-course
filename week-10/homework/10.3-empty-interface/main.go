@@ -6,11 +6,16 @@ import "fmt"
 func TypeName(v any) string {
 	// TODO: реализуй функцию
 	// Используй type switch:
-	// switch v.(type) {
-	// case int: return "int"
-	// case string: return "string"
-	// ...
-	// }
+	switch v.(type) {
+	case int:
+		return "int"
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case float64:
+		return "float64"
+	}
 	return "unknown"
 }
 
@@ -19,7 +24,7 @@ func ToString(v any) string {
 	// TODO: реализуй функцию
 	// Можно использовать fmt.Sprintf("%v", v)
 	// Или обработать типы отдельно через type switch
-	return ""
+	return fmt.Sprintf("%v", v)
 }
 
 // Sum суммирует все числовые значения из слайса
@@ -27,7 +32,16 @@ func ToString(v any) string {
 func Sum(values []any) float64 {
 	// TODO: реализуй функцию
 	// Используй type switch для int и float64
-	return 0
+	var sum float64
+	for _, v := range values {
+		switch val := v.(type) {
+		case float64:
+			sum += val
+		case int:
+			sum += float64(val)
+		}
+	}
+	return sum
 }
 
 // FilterByType возвращает слайс значений указанного типа
