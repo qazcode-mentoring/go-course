@@ -7,14 +7,24 @@ func Apply(nums []int, fn func(int) int) []int {
 	// TODO: реализуй функцию
 	// Создай новый слайс
 	// Для каждого элемента вызови fn и добавь результат
-	return nil
+	newNums := make([]int, 0)
+	for i := 0; i < len(nums); i++ {
+		newNums = append(newNums, fn(nums[i]))
+	}
+	return newNums
 }
 
 // Filter возвращает слайс элементов, для которых predicate возвращает true
 func Filter(nums []int, predicate func(int) bool) []int {
 	// TODO: реализуй функцию
 	// Если predicate(x) == true, добавь x в результат
-	return nil
+	result := make([]int, 0)
+	for i := 0; i < len(nums); i++ {
+		if predicate(nums[i]) {
+			result = append(result, nums[i])
+		}
+	}
+	return result
 }
 
 // Reduce сворачивает слайс в одно значение
@@ -25,7 +35,11 @@ func Reduce(nums []int, initial int, fn func(int, int) int) int {
 	// acc = initial
 	// для каждого x: acc = fn(acc, x)
 	// вернуть acc
-	return 0
+	acc := initial
+	for i := 0; i < len(nums); i++ {
+		acc = fn(acc, nums[i])
+	}
+	return acc
 }
 
 func main() {

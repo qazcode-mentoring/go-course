@@ -7,9 +7,11 @@ import "fmt"
 func Counter() func() int {
 	// TODO: реализуй функцию
 	// Создай переменную count
+	var count int
 	// Верни функцию, которая увеличивает и возвращает count
 	return func() int {
-		return 0
+		count++
+		return count
 	}
 }
 
@@ -18,9 +20,11 @@ func Counter() func() int {
 func Accumulator(initial int) func(int) int {
 	// TODO: реализуй функцию
 	// Создай переменную sum = initial
+	var sum = initial
 	// Верни функцию, которая прибавляет к sum и возвращает результат
 	return func(x int) int {
-		return 0
+		sum += x
+		return sum
 	}
 }
 
@@ -30,8 +34,13 @@ func Fibonacci() func() int {
 	// TODO: реализуй функцию
 	// Храни два предыдущих числа
 	// При каждом вызове вычисляй следующее
+	var a = 0
+	var b = 1
+	var res int
 	return func() int {
-		return 0
+		res = a
+		a, b = b, a+b
+		return res
 	}
 }
 
