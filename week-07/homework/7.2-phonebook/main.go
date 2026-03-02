@@ -6,13 +6,15 @@ import "fmt"
 func AddContact(book map[string]string, name, phone string) {
 	// TODO: реализуй функцию
 	// Просто добавь пару имя:телефон в map
+	book[name] = phone
 }
 
 // GetContact возвращает телефон по имени и флаг существования
 func GetContact(book map[string]string, name string) (string, bool) {
 	// TODO: реализуй функцию
 	// Используй синтаксис value, ok := map[key]
-	return "", false
+	value, ok := book[name]
+	return value, ok
 }
 
 // UpdateContact обновляет номер существующего контакта
@@ -20,6 +22,11 @@ func GetContact(book map[string]string, name string) (string, bool) {
 func UpdateContact(book map[string]string, name, phone string) bool {
 	// TODO: реализуй функцию
 	// Сначала проверь, существует ли контакт
+	_, ok := book[name]
+	if ok {
+		book[name] = phone
+		return true
+	}
 	return false
 }
 
@@ -28,6 +35,11 @@ func UpdateContact(book map[string]string, name, phone string) bool {
 func DeleteContact(book map[string]string, name string) bool {
 	// TODO: реализуй функцию
 	// Используй delete(map, key)
+	_, ok := book[name]
+	if ok {
+		delete(book, name)
+		return true
+	}
 	return false
 }
 
@@ -35,7 +47,9 @@ func DeleteContact(book map[string]string, name string) bool {
 func ListContacts(book map[string]string) {
 	// TODO: реализуй функцию
 	// Пройди по map с range и выведи каждый контакт
-	fmt.Println(book)
+	for key, value := range book {
+		fmt.Printf("%v : %v\n", key, value)
+	}
 }
 
 func main() {
