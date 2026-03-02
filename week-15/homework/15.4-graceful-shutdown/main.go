@@ -90,11 +90,27 @@ func (w *Worker) Start(ctx context.Context, jobs <-chan Task, results chan<- Res
 	//            return
 	//        }
 	//    }
+	defer wg.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("Worker %d: завершение по контексту\n", w.ID)
+			return
+		case task, ok := <-jobs:
+			if !ok {
+				fmt.Printf("Worker %d: канал задач закрыт\n", w.ID)
+				return
+			}
+			fmt.Printf("Worker %d: обработка задачи %d\n", w.ID, task.ID)
+			result := w.processTask(ctx, task)
 
-	_ = ctx     // удали после реализации
-	_ = jobs    // удали после реализации
-	_ = results // удали после реализации
-	_ = wg      // удали после реализации
+			select {
+			case results <- result:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 // WorkerPool управляет пулом воркеров
@@ -132,8 +148,20 @@ func (p *WorkerPool) Start(ctx context.Context) {
 	//    - Добавь 1 к p.workerWg
 	//    - Запусти горутину с worker.Start()
 	// 4. Установи p.started = true
+	if p.started {
+		return
+	}
 
-	_ = ctx // удали после реализации
+	ctx, p.cancelFunc = context.WithCancel(ctx)
+	for _, worker := range p.workers {
+		p.workerWg.Add(1)
+		go func(wrkr *Worker) {
+			wrkr.Start(ctx, p.jobs, p.results, &p.workerWg)
+		}(worker)
+	}
+
+	p.started = true
+
 }
 
 // Submit добавляет задачу в очередь. Возвращает false если пул остановлен.
@@ -144,9 +172,16 @@ func (p *WorkerPool) Submit(task Task) bool {
 	// 3. Отправь задачу в канал p.jobs
 	// 4. Верни true
 
-	_ = task // удали после реализации
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	return false
+	if p.stopped {
+		return false
+	}
+
+	p.jobs <- task
+
+	return true
 }
 
 // Results возвращает канал с результатами
@@ -170,9 +205,26 @@ func (p *WorkerPool) Shutdown(timeout time.Duration) error {
 	//    - Канал завершения - вернуть nil
 	//    - time.After(timeout) - вернуть ошибку таймаута
 
-	_ = timeout // удали после реализации
+	p.mu.Lock()
+	p.stopped = true
+	close(p.jobs)
+	p.mu.Unlock()
 
-	return fmt.Errorf("not implemented")
+	doneCh := make(chan interface{})
+	go func() {
+		defer close(doneCh)
+		p.workerWg.Wait()
+		close(p.results)
+	}()
+
+	select {
+	case <-doneCh:
+		return nil
+	case <-time.After(timeout):
+		p.cancelFunc()
+		return fmt.Errorf("timeout error")
+	}
+
 }
 
 // Service представляет сервис с фоновыми задачами
@@ -204,7 +256,22 @@ func (s *Service) Start(ctx context.Context) error {
 	//    go s.processResults()
 	// 5. Сохрани время старта
 
-	_ = ctx // удали после реализации
+	ctx, cancel := context.WithCancel(ctx)
+	s.ctx = ctx
+	s.cancel = cancel
+	s.pool.Start(ctx)
+
+	s.wg.Add(1)
+	go s.runHealthCheck()
+
+	s.wg.Add(1)
+	go s.processResults()
+
+	s.startTime = time.Now()
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	return nil
 }
@@ -255,9 +322,26 @@ func (s *Service) Shutdown(ctx context.Context) error {
 	//    с проверкой контекста shutdown
 	// 4. Выведи "Сервис остановлен"
 
-	_ = ctx // удали после реализации
+	s.cancel()
+	err := s.pool.Shutdown(3 * time.Second)
+	if err != nil {
+		return fmt.Errorf("err shutdown")
+	}
 
-	return fmt.Errorf("not implemented")
+	done := make(chan interface{})
+
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("Сервис остановлен")
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // SubmitTask добавляет задачу в сервис

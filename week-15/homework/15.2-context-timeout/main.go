@@ -71,12 +71,19 @@ func fetchWithTimeout(ctx context.Context, url string, timeout time.Duration) (R
 	// 3. Вызови simulateHTTPRequest с новым контекстом
 	// 4. Проверь StatusCode - если 500, верни ошибку "server error: 500"
 	// 5. Верни результат
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
-	_ = ctx     // удали после реализации
-	_ = url     // удали после реализации
-	_ = timeout // удали после реализации
+	response, err := simulateHTTPRequest(ctx, url)
+	if err != nil {
+		return Response{}, err
+	}
 
-	return Response{}, errors.New("not implemented")
+	if response.StatusCode == 500 {
+		return Response{}, fmt.Errorf("server error: 500, %w", err)
+	}
+
+	return response, nil
 }
 
 // fetchWithRetry выполняет запрос с повторными попытками.
@@ -100,12 +107,27 @@ func fetchWithRetry(ctx context.Context, url string, maxRetries int, retryDelay 
 	//       }
 	// 3. Верни последнюю ошибку
 
-	_ = ctx        // удали после реализации
-	_ = url        // удали после реализации
-	_ = maxRetries // удали после реализации
-	_ = retryDelay // удали после реализации
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		if ctx.Err() != nil {
+			return Response{}, ctx.Err()
+		}
 
-	return Response{}, errors.New("not implemented")
+		response, err := fetchWithTimeout(ctx, url, 500*time.Millisecond)
+		if response.StatusCode == 200 {
+			return response, nil
+		}
+
+		lastErr = err
+
+		select {
+		case <-time.After(retryDelay):
+		case <-ctx.Done():
+			return Response{}, ctx.Err()
+		}
+	}
+
+	return Response{}, lastErr
 }
 
 // fetchSequential выполняет последовательные запросы к нескольким URL.
@@ -122,12 +144,24 @@ func fetchSequential(ctx context.Context, urls []string, perRequestTimeout time.
 	//    d) Если ошибка - верни собранные результаты и ошибку
 	//    e) Добавь успешный результат в слайс
 	// 3. Верни все результаты и nil
+	var responses []Response
+	for _, url := range urls {
+		if ctx.Err() != nil {
+			return responses, ctx.Err()
+		}
 
-	_ = ctx               // удали после реализации
-	_ = urls              // удали после реализации
-	_ = perRequestTimeout // удали после реализации
+		deadline, _ := ctx.Deadline()
+		fmt.Println(deadline)
+		response, err := fetchWithTimeout(ctx, url, perRequestTimeout)
+		if response.StatusCode == 200 {
+			responses = append(responses, response)
+		} else {
+			return responses, err
+		}
 
-	return nil, errors.New("not implemented")
+	}
+
+	return responses, nil
 }
 
 func main() {
