@@ -17,11 +17,9 @@ func Sum(arr [5]int) int {
 func Average(arr [5]int) float64 {
 	// TODO: реализуй функцию
 	// Используй Sum и подели на количество элементов
-	sum := 0
-	for i := 0; i < len(arr); i++ {
-		sum += arr[i]
-	}
-	return float64(sum / len(arr))
+	sum := Sum(arr)
+
+	return float64(sum) / float64(len(arr))
 }
 
 // Max возвращает максимальный элемент массива
@@ -51,7 +49,7 @@ func Min(arr [5]int) int {
 }
 
 func main() {
-	arr := [5]int{10, 20, 5, 15, 30}
+	arr := [5]int{1, 1, 1, 1, 0}
 
 	fmt.Println("=== Операции с массивом ===")
 	fmt.Println("Массив:", arr)

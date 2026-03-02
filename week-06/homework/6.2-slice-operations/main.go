@@ -20,12 +20,11 @@ func RemoveAt(slice []int, index int) []int {
 	// TODO: реализуй функцию
 	// Проверь, что index в допустимых границах
 	// Используй append для соединения частей до и после index
-	for i, _ := range slice {
-		if i == index {
-			slice = append(slice[:index], slice[index+1:]...)
-		}
+	if index < 0 || index >= len(slice) {
+		return slice
 	}
-	return slice
+
+	return append(slice[:index], slice[index+1:]...)
 }
 
 // RemoveValue удаляет первое вхождение значения из слайса
@@ -34,7 +33,7 @@ func RemoveValue(slice []int, value int) []int {
 	// Найди индекс value и используй RemoveAt
 	for i, v := range slice {
 		if v == value {
-			slice = RemoveAt(slice, i)
+			return RemoveAt(slice, i)
 		}
 	}
 	return slice

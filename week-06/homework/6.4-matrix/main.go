@@ -90,6 +90,4 @@ func main() {
 	PrintMatrix(transposed)
 
 	fmt.Println("\nСумма элементов:", SumMatrix(matrix))
-
-	//fmt.Println(CreateMatrix(3, 3, 3))
 }
