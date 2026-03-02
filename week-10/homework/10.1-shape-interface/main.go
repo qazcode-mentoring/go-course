@@ -77,8 +77,6 @@ func main() {
 		Rectangle{Width: 10, Height: 5},
 	}
 
-	fmt.Printf("shapes[1]: %v\n", shapes[1])
-
 	// Выводим информацию о каждой
 	fmt.Println("Информация о фигурах:")
 	for _, s := range shapes {
