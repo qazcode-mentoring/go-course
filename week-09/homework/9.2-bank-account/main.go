@@ -59,7 +59,7 @@ func (a *Account) Transfer(to *Account, amount float64) error {
 func (a Account) Statement() string {
 	// TODO: реализуй метод
 	// Формат: "Счёт: {Owner}, Баланс: {Balance:.2f}"
-	s := fmt.Sprintf("Счёт: %.2f, Баланс: %v", a.Owner, a.Balance)
+	s := fmt.Sprintf("Счёт: %v, Баланс: %.2f", a.Owner, a.Balance)
 	return s
 }
 
