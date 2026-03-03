@@ -9,16 +9,21 @@ import (
 func Min[T cmp.Ordered](a, b T) T {
 	// TODO: реализуй функцию
 	// Если a < b, верни a, иначе верни b
-	var zero T
-	return zero
+	if a < b {
+		return a
+	}
+
+	return b
 }
 
 // Max возвращает большее из двух значений
 func Max[T cmp.Ordered](a, b T) T {
 	// TODO: реализуй функцию
 	// Если a > b, верни a, иначе верни b
-	var zero T
-	return zero
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // MinSlice возвращает минимальный элемент слайса
@@ -30,6 +35,17 @@ func MinSlice[T cmp.Ordered](slice []T) (T, bool) {
 	// 2. Инициализируй min первым элементом
 	// 3. Пройди по всем элементам и найди минимум
 	var zero T
+
+	if len(slice) != 0 {
+		minItem := slice[0]
+		for i := 0; i < len(slice); i++ {
+			if minItem > slice[i] {
+				minItem = slice[i]
+			}
+		}
+		return minItem, true
+	}
+
 	return zero, false
 }
 
@@ -41,7 +57,18 @@ func MaxSlice[T cmp.Ordered](slice []T) (T, bool) {
 	// 1. Проверь, что слайс не пустой
 	// 2. Инициализируй max первым элементом
 	// 3. Пройди по всем элементам и найди максимум
+
 	var zero T
+	if len(slice) != 0 {
+		maxItem := slice[0]
+		for i := 0; i < len(slice); i++ {
+			if maxItem < slice[i] {
+				maxItem = slice[i]
+			}
+		}
+		return maxItem, true
+	}
+
 	return zero, false
 }
 
@@ -52,6 +79,12 @@ func Clamp[T cmp.Ordered](v, minVal, maxVal T) T {
 	// Если v > maxVal, верни maxVal
 	// Иначе верни v
 	// Подсказка: можно использовать Min и Max
+	if v < minVal {
+		return minVal
+	}
+	if v > maxVal {
+		return maxVal
+	}
 	return v
 }
 
