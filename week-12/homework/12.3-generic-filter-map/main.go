@@ -9,7 +9,15 @@ func Filter[T any](slice []T, predicate func(T) bool) []T {
 	// 2. Пройди по всем элементам
 	// 3. Если predicate(element) == true, добавь в результат
 	// 4. Верни результат
-	return nil
+	results := make([]T, 0)
+
+	for _, element := range slice {
+		if predicate(element) == true {
+			results = append(results, element)
+		}
+	}
+
+	return results
 }
 
 // Map преобразует каждый элемент слайса с помощью функции transform
@@ -19,7 +27,13 @@ func Map[T, R any](slice []T, transform func(T) R) []R {
 	// 2. Пройди по всем элементам
 	// 3. Преобразуй каждый элемент: result[i] = transform(slice[i])
 	// 4. Верни результат
-	return nil
+	results := make([]R, len(slice))
+
+	for i := 0; i < len(slice); i++ {
+		results[i] = transform(slice[i])
+	}
+
+	return results
 }
 
 // Reduce сворачивает слайс в одно значение
@@ -29,7 +43,12 @@ func Reduce[T, R any](slice []T, initial R, reducer func(R, T) R) R {
 	// 2. Пройди по всем элементам
 	// 3. Обнови аккумулятор: acc = reducer(acc, element)
 	// 4. Верни аккумулятор
-	return initial
+	acc := initial
+	for _, element := range slice {
+		acc = reducer(acc, element)
+	}
+
+	return acc
 }
 
 // Find ищет первый элемент, для которого predicate вернул true
@@ -39,6 +58,11 @@ func Find[T any](slice []T, predicate func(T) bool) (T, bool) {
 	// 2. Если predicate(element) == true, верни (element, true)
 	// 3. Если ничего не найдено, верни (zero, false)
 	var zero T
+	for _, element := range slice {
+		if predicate(element) == true {
+			return element, true
+		}
+	}
 	return zero, false
 }
 
@@ -46,6 +70,11 @@ func Find[T any](slice []T, predicate func(T) bool) (T, bool) {
 func Any[T any](slice []T, predicate func(T) bool) bool {
 	// TODO: реализуй функцию
 	// Верни true при первом совпадении
+	for _, element := range slice {
+		if predicate(element) == true {
+			return true
+		}
+	}
 	return false
 }
 
@@ -54,7 +83,18 @@ func Any[T any](slice []T, predicate func(T) bool) bool {
 func All[T any](slice []T, predicate func(T) bool) bool {
 	// TODO: реализуй функцию
 	// Верни false при первом несовпадении
-	return true
+	all := 0
+	for _, element := range slice {
+		if predicate(element) != true {
+			return false
+		} else {
+			all++
+		}
+	}
+	if all == len(slice) {
+		return true
+	}
+	return false
 }
 
 // User - пример пользовательской структуры

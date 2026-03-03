@@ -28,7 +28,8 @@ type Cache[K comparable, V any] struct {
 func NewCache[K comparable, V any](defaultTTL time.Duration) *Cache[K, V] {
 	// TODO: реализуй функцию
 	// Создай и верни указатель на новый Cache с инициализированной map
-	return nil
+	dataMap := make(map[K]cacheEntry[V])
+	return &Cache{data: dataMap, defaultTTL: defaultTTL}
 }
 
 // Set добавляет значение с дефолтным TTL
