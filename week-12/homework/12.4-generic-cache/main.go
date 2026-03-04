@@ -29,7 +29,7 @@ func NewCache[K comparable, V any](defaultTTL time.Duration) *Cache[K, V] {
 	// TODO: реализуй функцию
 	// Создай и верни указатель на новый Cache с инициализированной map
 	dataMap := make(map[K]cacheEntry[V])
-	return &Cache{data: dataMap, defaultTTL: defaultTTL}
+	return &Cache[K, V]{data: dataMap, defaultTTL: defaultTTL}
 }
 
 // Set добавляет значение с дефолтным TTL
@@ -37,6 +37,12 @@ func (c *Cache[K, V]) Set(key K, value V) {
 	// TODO: реализуй метод
 	// Используй c.defaultTTL для установки времени истечения
 	// Время истечения = time.Now().Add(c.defaultTTL)
+	expiration := time.Now().Add(c.defaultTTL)
+	entry := cacheEntry[V]{
+		value:      value,
+		expiration: expiration,
+	}
+	c.data[key] = entry
 }
 
 // SetWithTTL добавляет значение с указанным TTL
@@ -44,6 +50,11 @@ func (c *Cache[K, V]) SetWithTTL(key K, value V, ttl time.Duration) {
 	// TODO: реализуй метод
 	// Создай cacheEntry с value и expiration = time.Now().Add(ttl)
 	// Сохрани в c.data[key]
+	entry := cacheEntry[V]{
+		value:      value,
+		expiration: time.Now().Add(ttl),
+	}
+	c.data[key] = entry
 }
 
 // Get возвращает значение, если оно существует и не истекло
@@ -54,6 +65,14 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	// 3. Если истекла, можно удалить и вернуть (zero, false)
 	// 4. Если валидна, верни (value, true)
 	var zero V
+
+	if v, ok := c.data[key]; ok {
+		if v.isExpired() {
+			delete(c.data, key)
+			return zero, false
+		}
+		return v.value, true
+	}
 	return zero, false
 }
 
@@ -61,25 +80,38 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 func (c *Cache[K, V]) Delete(key K) {
 	// TODO: реализуй метод
 	// Используй delete(c.data, key)
+	delete(c.data, key)
 }
 
 // Len возвращает количество валидных (не истекших) записей
 func (c *Cache[K, V]) Len() int {
 	// TODO: реализуй метод
 	// Пройди по всем записям и посчитай только те, которые не истекли
-	return 0
+	var length int
+	for _, entry := range c.data {
+		if !entry.isExpired() {
+			length++
+		}
+	}
+	return length
 }
 
 // Clear очищает весь кэш
 func (c *Cache[K, V]) Clear() {
 	// TODO: реализуй метод
 	// Можно создать новую пустую map: c.data = make(map[K]cacheEntry[V])
+	c.data = make(map[K]cacheEntry[V])
 }
 
 // Cleanup удаляет все истекшие записи
 func (c *Cache[K, V]) Cleanup() {
 	// TODO: реализуй метод
 	// Пройди по всем записям и удали те, которые истекли
+	for key, entry := range c.data {
+		if entry.isExpired() {
+			delete(c.data, key)
+		}
+	}
 }
 
 // Пример структуры для тестирования
