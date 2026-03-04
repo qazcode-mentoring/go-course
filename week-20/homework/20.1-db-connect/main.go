@@ -39,9 +39,18 @@ func Connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 	// 3. Проверь соединение: err = conn.Ping(ctx)
 	// 4. Если Ping не удался, закрой соединение и верни ошибку
 	// 5. Верни соединение
-	_ = ctx
-	_ = dsn
-	return nil, fmt.Errorf("not implemented")
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	err = conn.Ping(ctx)
+	if err != nil {
+		conn.Close(ctx)
+		return nil, fmt.Errorf("failed to ping: %w", err)
+	}
+
+	return conn, nil
 }
 
 // ConnectPool создаёт пул соединений к PostgreSQL
@@ -52,9 +61,18 @@ func ConnectPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	// 3. Проверь соединение: err = pool.Ping(ctx)
 	// 4. Если Ping не удался, закрой пул и верни ошибку
 	// 5. Верни пул
-	_ = ctx
-	_ = dsn
-	return nil, fmt.Errorf("not implemented")
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	err = pool.Ping(ctx)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to ping: %w", err)
+	}
+
+	return pool, nil
 }
 
 // ConnectPoolWithConfig создаёт пул соединений с пользовательскими настройками
@@ -70,9 +88,28 @@ func ConnectPoolWithConfig(ctx context.Context, cfg PoolConfig) (*pgxpool.Pool, 
 	// 4. Создай пул с конфигурацией: pool, err := pgxpool.NewWithConfig(ctx, config)
 	// 5. Проверь соединение через Ping
 	// 6. Верни пул или ошибку
-	_ = ctx
-	_ = cfg
-	return nil, fmt.Errorf("not implemented")
+	config, err := pgxpool.ParseConfig(cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", err)
+	}
+
+	config.MaxConns = cfg.MaxConns
+	config.MinConns = cfg.MinConns
+	config.MaxConnLifetime = cfg.MaxConnLifetime
+	config.MaxConnIdleTime = cfg.MaxConnIdleTime
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	err = pool.Ping(ctx)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to ping: %w", err)
+	}
+
+	return pool, nil
 }
 
 // GetDatabaseInfo возвращает информацию о подключении к базе данных
@@ -90,9 +127,27 @@ func GetDatabaseInfo(ctx context.Context, pool *pgxpool.Pool) (DatabaseInfo, err
 	//    info.MaxConns = stat.MaxConns()
 	//    info.CurrentConns = stat.TotalConns()
 	// 6. Верни info
-	_ = ctx
-	_ = pool
-	return DatabaseInfo{}, fmt.Errorf("not implemented")
+	var info DatabaseInfo
+	err := pool.QueryRow(ctx, "SELECT version()").Scan(&info.Version)
+	if err != nil {
+		return DatabaseInfo{}, fmt.Errorf("failed to get version: %w", err)
+	}
+
+	err = pool.QueryRow(ctx, "SELECT current_database()").Scan(&info.Database)
+	if err != nil {
+		return DatabaseInfo{}, fmt.Errorf("failed to get current database: %w", err)
+	}
+
+	err = pool.QueryRow(ctx, "SELECT current_user").Scan(&info.User)
+	if err != nil {
+		return DatabaseInfo{}, fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	stat := pool.Stat()
+	info.MaxConns = stat.MaxConns()
+	info.CurrentConns = stat.TotalConns()
+
+	return info, nil
 }
 
 func main() {
