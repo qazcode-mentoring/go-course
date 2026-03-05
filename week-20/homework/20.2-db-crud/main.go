@@ -144,6 +144,9 @@ func GetAllUsers(ctx context.Context, pool *pgxpool.Pool) ([]User, error) {
 	// 6. Верни users
 	query := `SELECT id, name, email, age, created_at, updated_at FROM users ORDER BY id`
 	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query: %w", err)
+	}
 	defer rows.Close()
 
 	var users []User
