@@ -351,6 +351,4 @@ func main() {
 		fmt.Println("Transfer succeeded (unexpected)")
 	}
 
-	// Используем импорт
-	_ = pgx.Tx(nil)
 }
