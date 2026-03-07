@@ -171,7 +171,7 @@ func (r *PostgresUserRepository) GetAll(ctx context.Context) ([]*User, error) {
 	}
 
 	if rows.Err() != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration error: %w", rows.Err())
 	}
 
 	return users, nil
