@@ -250,15 +250,20 @@ func (r *InMemoryUserRepository) Create(ctx context.Context, user *User) error {
 	}
 
 	var addUser User
+	now := time.Now()
 	addUser.ID = r.nextID
 	r.nextID++
 	addUser.Name = user.Name
 	addUser.Email = user.Email
 	addUser.Age = user.Age
-	addUser.CreatedAt = time.Now()
-	addUser.UpdatedAt = time.Now()
+	addUser.CreatedAt = now
+	addUser.UpdatedAt = now
 
 	r.users[addUser.ID] = &addUser
+
+	user.ID = addUser.ID
+	user.CreatedAt = now
+	user.UpdatedAt = now
 
 	return nil
 }
