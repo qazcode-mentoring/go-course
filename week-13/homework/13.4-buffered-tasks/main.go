@@ -30,6 +30,19 @@ func worker(id int, tasks <-chan Task, results chan<- Result, wg *sync.WaitGroup
 	//    - Симулируй работу: time.Sleep(task.Duration)
 	//    - Создай Result и отправь в канал results
 	//    - Выведи: "[Worker ID] Завершил задачу TaskID"
+	defer wg.Done()
+	for task := range tasks {
+		fmt.Printf("[%d] Начал задачу TaskID: '%s'\n", id, task.Name)
+		time.Sleep(task.Duration)
+		res := Result{
+			TaskID:    task.ID,
+			Output:    fmt.Sprintf("Задача %d (%s) выполнена", task.ID, task.Name),
+			Completed: time.Now(),
+		}
+
+		results <- res
+		fmt.Printf("[%d] Завершил задачу %d\n", id, task.ID)
+	}
 }
 
 // processTasksBuffered обрабатывает задачи через буферизованный канал
@@ -46,7 +59,32 @@ func processTasksBuffered(tasks []Task, bufferSize, workerCount int) []Result {
 	// 7. Дождись завершения всех воркеров (wg.Wait())
 	// 8. Закрой канал результатов
 	// 9. Собери результаты из канала в слайс и верни
-	return nil
+	ch := make(chan Task, bufferSize)
+	res := make(chan Result, len(tasks))
+	wg := sync.WaitGroup{}
+
+	for i := 1; i <= workerCount; i++ {
+		wg.Add(1)
+		go worker(i, ch, res, &wg)
+	}
+
+	for _, task := range tasks {
+		ch <- task
+	}
+
+	close(ch)
+
+	go func() {
+		wg.Wait()
+		close(res)
+	}()
+
+	var results []Result
+	for r := range res {
+		results = append(results, r)
+	}
+
+	return results
 }
 
 // processTasksUnbuffered обрабатывает задачи через небуферизованный канал
@@ -59,7 +97,33 @@ func processTasksUnbuffered(tasks []Task, workerCount int) []Result {
 	// ВАЖНО: при небуферизованном канале отправка будет блокироваться,
 	// пока воркер не прочитает задачу. Поэтому отправку задач нужно
 	// делать в отдельной горутине!
-	return nil
+	ch := make(chan Task)
+	res := make(chan Result, len(tasks))
+	wg := sync.WaitGroup{}
+
+	for i := 1; i <= workerCount; i++ {
+		wg.Add(1)
+		go worker(i, ch, res, &wg)
+	}
+
+	go func() {
+		for _, task := range tasks {
+			ch <- task
+		}
+		close(ch)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(res)
+	}()
+
+	var results []Result
+	for r := range res {
+		results = append(results, r)
+	}
+
+	return results
 }
 
 func main() {
