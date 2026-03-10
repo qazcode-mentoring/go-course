@@ -11,6 +11,8 @@ func sayHello(id int, name string, wg *sync.WaitGroup) {
 	// TODO: реализуй функцию
 	// 1. Используй defer wg.Done() для уменьшения счётчика WaitGroup
 	// 2. Выведи приветствие в формате "Привет #N от NAME!"
+	defer wg.Done()
+	fmt.Printf("Привет #%d от %s!\n", id, name)
 }
 
 // runConcurrent запускает горутины для каждого имени из списка
@@ -22,13 +24,21 @@ func runConcurrent(names []string) {
 	//    - Вызови wg.Add(1)
 	//    - Запусти горутину с sayHello
 	// 3. Дождись завершения всех горутин с wg.Wait()
+	var wg sync.WaitGroup
+
+	for i, name := range names {
+		wg.Add(1)
+		go sayHello(i, name, &wg)
+	}
+
+	wg.Wait()
 }
 
 func main() {
 	fmt.Println("=== Concurrent Hello ===")
 	fmt.Println()
 
-	names := []string{"Алиса", "Боб", "Чарли", "Дэйв", "Ева"}
+	names := []string{"Али13са", "Боб", "Чарли", "Дэйв", "Ева"}
 
 	// Запустим несколько раз, чтобы увидеть разный порядок
 	for i := 1; i <= 3; i++ {
@@ -39,5 +49,6 @@ func main() {
 
 	// TODO: напиши здесь в комментарии, почему порядок вывода
 	// может отличаться при каждом запуске
-	// Ответ: ...
+	// Ответ: это происходит из-за конкурентности выполнения горутин и планировщика Go.
+	// Планировщик может запускать горутины в разном порядке
 }
