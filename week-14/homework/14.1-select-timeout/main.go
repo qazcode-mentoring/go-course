@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 	// Раскомментируй после реализации fetchMultiple
 	// "sync"
@@ -40,10 +41,13 @@ func fetchWithTimeout(url string, timeout time.Duration) (string, error) {
 	//    - case для time.After(timeout)
 	// 3. Верни данные или ошибку "timeout exceeded"
 
-	_ = url     // удали после реализации
-	_ = timeout // удали после реализации
-
-	return "", errors.New("not implemented")
+	res := simulateFetch(url)
+	select {
+	case data := <-res:
+		return data, nil
+	case <-time.After(timeout):
+		return "", errors.New("timeout exceeded")
+	}
 }
 
 // fetchMultiple загружает данные из нескольких URL параллельно.
@@ -65,11 +69,22 @@ func fetchMultiple(urls []string, timeout time.Duration) <-chan FetchResult {
 
 	results := make(chan FetchResult)
 
-	_ = urls    // удали после реализации
-	_ = timeout // удали после реализации
+	wg := sync.WaitGroup{}
 
-	// Заглушка: сразу закрываем канал
-	close(results)
+	for _, url := range urls {
+		wg.Add(1)
+
+		go func(u string) {
+			defer wg.Done()
+			data, err := fetchWithTimeout(url, timeout)
+			results <- FetchResult{u, data, err}
+		}(url)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
 	return results
 }

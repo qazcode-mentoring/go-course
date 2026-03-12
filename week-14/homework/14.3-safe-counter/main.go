@@ -10,12 +10,14 @@ type Counter struct {
 	// TODO: добавь поля
 	// - mu sync.Mutex для защиты данных
 	// - value int для хранения значения
+	mu    sync.Mutex
+	value int
 }
 
 // NewCounter создаёт новый счётчик с начальным значением 0
 func NewCounter() *Counter {
 	// TODO: реализуй функцию
-	return &Counter{}
+	return &Counter{mu: sync.Mutex{}, value: 0}
 }
 
 // Increment увеличивает счётчик на 1 и возвращает новое значение
@@ -26,32 +28,41 @@ func (c *Counter) Increment() int {
 	// 3. Сохрани новое значение в локальную переменную
 	// 4. Освободи мьютекс (используй defer)
 	// 5. Верни новое значение
-
-	return 0
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.value++
+	newValue := c.value
+	return newValue
 }
 
 // Decrement уменьшает счётчик на 1 и возвращает новое значение
 func (c *Counter) Decrement() int {
 	// TODO: реализуй метод
 	// Аналогично Increment, но уменьшаем
-
-	return 0
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.value--
+	newValue := c.value
+	return newValue
 }
 
 // Add добавляет delta к счётчику и возвращает новое значение
 func (c *Counter) Add(delta int) int {
 	// TODO: реализуй метод
-
-	_ = delta // удали после реализации
-	return 0
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.value += delta
+	newValue := c.value
+	return newValue
 }
 
 // Value возвращает текущее значение счётчика
 func (c *Counter) Value() int {
 	// TODO: реализуй метод
 	// Не забудь: даже чтение должно быть защищено мьютексом!
-
-	return 0
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.value
 }
 
 // Reset сбрасывает счётчик в 0 и возвращает предыдущее значение
@@ -61,8 +72,11 @@ func (c *Counter) Reset() int {
 	// 2. Сохрани текущее значение
 	// 3. Установи значение в 0
 	// 4. Верни старое значение
-
-	return 0
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	curr := c.value
+	c.value = 0
+	return curr
 }
 
 func main() {
