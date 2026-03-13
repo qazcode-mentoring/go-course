@@ -486,6 +486,7 @@ func getProductHandler(w http.ResponseWriter, r *http.Request) {
 	product, exists := storage.Get(id)
 	if !exists {
 		writeError(w, http.StatusNotFound, "product not found")
+		return
 	}
 
 	writeJSON(w, http.StatusOK, product)
