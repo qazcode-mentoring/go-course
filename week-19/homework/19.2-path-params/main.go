@@ -196,7 +196,7 @@ func parseIntParam(r *http.Request, name string) (int, error) {
 	// 1. Получи значение: r.PathValue(name)
 	// 2. Конвертируй: strconv.Atoi(...)
 	// 3. Верни результат или ошибку
-	nameStr := r.PathValue("name")
+	nameStr := r.PathValue(name)
 	nameInt, err := strconv.Atoi(nameStr)
 	if err != nil {
 		return 0, err
@@ -365,8 +365,13 @@ func deleteUserPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, exists = postStorage.Get(postId)
+	post, exists := postStorage.Get(postId)
 	if !exists {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	if post.ID != postId {
 		writeError(w, http.StatusNotFound, "post not found")
 		return
 	}
