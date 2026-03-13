@@ -140,7 +140,7 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	// 1. Установи заголовок Content-Type: application/json
 	// 2. Установи статус-код: w.WriteHeader(status)
 	// 3. Закодируй data в JSON: json.NewEncoder(w).Encode(data)
-	w.Header().Set("Content-Type", "applcation/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
