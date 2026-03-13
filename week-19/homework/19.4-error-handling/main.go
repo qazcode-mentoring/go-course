@@ -74,6 +74,7 @@ func ValidationError(details map[string]string) *AppError {
 		Code:    "VALIDATION_ERROR",
 		Message: "validation_failed",
 		Status:  http.StatusUnprocessableEntity,
+		Details: details,
 	}
 }
 
@@ -234,7 +235,7 @@ func (r UpdateTaskRequest) Validate() map[string]string {
 	}
 
 	if r.Priority < 1 || r.Priority > 5 {
-		errs["priority"] = "priority must be betweenm 1 and 5"
+		errs["priority"] = "priority must be between 1 and 5"
 	}
 
 	return errs
@@ -431,13 +432,13 @@ func updateTask(w http.ResponseWriter, r *http.Request) error {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		return err
+		return BadRequest("invalid ID")
 	}
 
 	var req UpdateTaskRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return err
+		return BadRequest("invalid request body")
 	}
 
 	errs := req.Validate()
