@@ -369,6 +369,7 @@ func (r *InMemoryUserRepository) Update(ctx context.Context, user *User) error {
 	u.Email = user.Email
 	u.Age = user.Age
 	u.UpdatedAt = time.Now()
+	user.UpdatedAt = time.Now()
 
 	return nil
 }
