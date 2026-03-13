@@ -60,10 +60,24 @@ func GetAccountByID(ctx context.Context, pool *pgxpool.Pool, id int) (Account, e
 	// 2. Используй QueryRow и Scan
 	// 3. Проверь на pgx.ErrNoRows
 	// 4. Верни счёт или ошибку
-	_ = ctx
-	_ = pool
-	_ = id
-	return Account{}, fmt.Errorf("not implemented")
+	query := `SELECT id, user_id, balance, currency, created_at, updated_at FROM accounts WHERE id = $1`
+	var account Account
+	err := pool.QueryRow(ctx, query, id).Scan(
+		&account.ID,
+		&account.UserID,
+		&account.Balance,
+		&account.Currency,
+		&account.CreatedAt,
+		&account.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Account{}, ErrAccountNotFound
+		}
+		return Account{}, err
+	}
+
+	return account, nil
 }
 
 // TransferMoney выполняет перевод денег между счетами в транзакции
@@ -124,13 +138,49 @@ func TransferMoney(ctx context.Context, pool *pgxpool.Pool, fromID, toID int, am
 	//    }
 	//
 	// 7. Верни nil при успехе
-	_ = ctx
-	_ = pool
-	_ = fromID
-	_ = toID
-	_ = amount
-	_ = description
-	return fmt.Errorf("not implemented")
+	if toID == fromID {
+		return ErrSameAccount
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx,
+		`UPDATE accounts SET balance = balance - $1, updated_at = NOW() 
+                WHERE id = $2 AND balance >= $1`, amount, fromID)
+	if err != nil {
+		return fmt.Errorf("debit account: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrInsufficientFunds
+	}
+
+	result, err = tx.Exec(ctx,
+		`UPDATE accounts SET balance = balance + $1, updated_at = NOW()
+                WHERE id = $2`, amount, toID)
+	if err != nil {
+		return fmt.Errorf("credit account: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrAccountNotFound
+	}
+
+	_, err = tx.Exec(ctx,
+		`INSERT INTO transactions (from_account_id, to_account_id, amount, description)
+			VALUES ($1, $2, $3, $4)`, fromID, toID, amount, description)
+
+	if err != nil {
+		return fmt.Errorf("record transaction: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetAccountTransactions возвращает историю транзакций для счёта
@@ -144,10 +194,40 @@ func GetAccountTransactions(ctx context.Context, pool *pgxpool.Pool, accountID i
 	// 2. Используй Query и итерируй по rows
 	// 3. Не забудь rows.Close() и проверку rows.Err()
 	// 4. Верни список транзакций
-	_ = ctx
-	_ = pool
-	_ = accountID
-	return nil, fmt.Errorf("not implemented")
+	query := `SELECT id, from_account_id, to_account_id, amount, description, created_at
+				FROM transactions
+				WHERE from_account_id = $1 OR to_account_id = $1
+				ORDER BY created_at DESC`
+	rows, err := pool.Query(ctx, query, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []Transaction
+	for rows.Next() {
+		var transaction Transaction
+		err = rows.Scan(
+			&transaction.ID,
+			&transaction.FromAccountID,
+			&transaction.ToAccountID,
+			&transaction.Amount,
+			&transaction.Description,
+			&transaction.CreatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("fail: %w", rows.Err())
+	}
+
+	return transactions, nil
 }
 
 // WithTransaction выполняет функцию внутри транзакции
@@ -157,10 +237,17 @@ func WithTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx)
 	// 2. Добавь defer tx.Rollback(ctx)
 	// 3. Выполни функцию: if err := fn(tx); err != nil { return err }
 	// 4. Зафиксируй: return tx.Commit(ctx)
-	_ = ctx
-	_ = pool
-	_ = fn
-	return fmt.Errorf("not implemented")
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if err = fn(tx); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func main() {
@@ -266,6 +353,4 @@ func main() {
 		fmt.Println("Transfer succeeded (unexpected)")
 	}
 
-	// Используем импорт
-	_ = pgx.Tx(nil)
 }
