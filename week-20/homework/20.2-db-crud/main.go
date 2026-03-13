@@ -61,9 +61,13 @@ func CreateUser(ctx context.Context, pool *pgxpool.Pool, name, email string, age
 		&user.UpdatedAt,
 	)
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return User{}, ErrEmailAlreadyExists
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return User{}, ErrEmailAlreadyExists
+		}
+
+		return User{}, err
 	}
 
 	return user, nil
@@ -92,8 +96,11 @@ func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id int) (User, error) 
 		&user.UpdatedAt,
 	)
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrUserNotFound
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, err
 	}
 
 	return user, nil
@@ -114,8 +121,11 @@ func GetUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (User
 		&user.UpdatedAt,
 	)
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrUserNotFound
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, err
 	}
 
 	return user, nil
@@ -196,13 +206,17 @@ func UpdateUser(ctx context.Context, pool *pgxpool.Pool, id int, name, email str
 		&updatedUser.UpdatedAt,
 	)
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrUserNotFound
-	}
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return User{}, ErrEmailAlreadyExists
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return User{}, ErrEmailAlreadyExists
+		}
+
+		return User{}, err
 	}
 
 	return updatedUser, nil
