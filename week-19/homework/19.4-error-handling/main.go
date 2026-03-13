@@ -39,8 +39,11 @@ func NotFound(resource string) *AppError {
 	//     Message: fmt.Sprintf("%s not found", resource),
 	//     Status:  http.StatusNotFound,
 	// }
-	_ = resource
-	return nil
+	return &AppError{
+		Code:    "NOT_FOUND",
+		Message: fmt.Sprintf("%s not found", resource),
+		Status:  http.StatusNotFound,
+	}
 }
 
 // BadRequest создаёт ошибку "неверный запрос"
@@ -51,8 +54,11 @@ func BadRequest(message string) *AppError {
 	//     Message: message,
 	//     Status:  http.StatusBadRequest,
 	// }
-	_ = message
-	return nil
+	return &AppError{
+		Code:    "BAD_REQUEST",
+		Message: message,
+		Status:  http.StatusBadRequest,
+	}
 }
 
 // ValidationError создаёт ошибку валидации с деталями по полям
@@ -64,8 +70,12 @@ func ValidationError(details map[string]string) *AppError {
 	//     Status:  http.StatusUnprocessableEntity,
 	//     Details: details,
 	// }
-	_ = details
-	return nil
+	return &AppError{
+		Code:    "VALIDATION_ERROR",
+		Message: "validation_failed",
+		Status:  http.StatusUnprocessableEntity,
+		Details: details,
+	}
 }
 
 // InternalError создаёт внутреннюю ошибку сервера
@@ -77,8 +87,12 @@ func InternalError(err error) *AppError {
 	//     Status:  http.StatusInternalServerError,
 	//     Err:     err,
 	// }
-	_ = err
-	return nil
+	return &AppError{
+		Code:    "INTERNAL_ERROR",
+		Message: "internal server error",
+		Status:  http.StatusInternalServerError,
+		Err:     err,
+	}
 }
 
 // ==================== AppHandler и WrapHandler ====================
@@ -98,7 +112,19 @@ func WrapHandler(h AppHandler) http.HandlerFunc {
 		// 5. Если неизвестная ошибка — логируем и отправляем INTERNAL_ERROR
 
 		// Временная заглушка — просто вызываем обработчик
-		_ = h(w, r)
+		err := h(w, r)
+		if err == nil {
+			return
+		}
+
+		var appErr *AppError
+		if errors.As(err, &appErr) {
+			writeJSON(w, appErr.Status, appErr)
+			return
+		}
+
+		internalErr := InternalError(err)
+		writeJSON(w, internalErr.Status, internalErr)
 	}
 }
 
@@ -140,7 +166,23 @@ func (r CreateTaskRequest) Validate() map[string]string {
 	// }
 	//
 	// return errs
-	return nil
+
+	errs := make(map[string]string)
+
+	title := strings.TrimSpace(r.Title)
+	if title == "" {
+		errs["title"] = "title is required"
+	} else if len(title) < 3 {
+		errs["title"] = "title must be at least 3 characters"
+	} else if len(title) > 100 {
+		errs["title"] = "title must be at most 100 characters"
+	}
+
+	if r.Priority < 1 || r.Priority > 5 {
+		errs["priority"] = "priority must be between 1 and 5"
+	}
+
+	return errs
 }
 
 // UpdateTaskRequest — запрос на обновление задачи
@@ -175,7 +217,28 @@ func (r UpdateTaskRequest) Validate() map[string]string {
 	// }
 	//
 	// return errs
-	return nil
+
+	errs := make(map[string]string)
+
+	title := strings.TrimSpace(r.Title)
+	if title == "" {
+		errs["title"] = "title is required"
+	} else if len(title) < 3 {
+		errs["title"] = "title must be at least 3 characters"
+	} else if len(title) > 100 {
+		errs["title"] = "title must be at most 100 characters"
+	}
+
+	validStatuses := map[string]bool{"pending": true, "in_progress": true, "done": true}
+	if !validStatuses[r.Status] {
+		errs["status"] = "status must be one of: pending, in_progress, done"
+	}
+
+	if r.Priority < 1 || r.Priority > 5 {
+		errs["priority"] = "priority must be between 1 and 5"
+	}
+
+	return errs
 }
 
 // ==================== Storage ====================
@@ -282,9 +345,12 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	// w.Header().Set("Content-Type", "application/json")
 	// w.WriteHeader(status)
 	// json.NewEncoder(w).Encode(data)
-	_ = w
-	_ = status
-	_ = data
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		log.Printf("fail: %v", err)
+	}
 }
 
 // ==================== Обработчики ====================
@@ -295,8 +361,8 @@ func listTasks(w http.ResponseWriter, r *http.Request) error {
 	// tasks := storage.GetAll()
 	// writeJSON(w, http.StatusOK, tasks)
 	// return nil
-	_ = r
-	_ = w
+	tasks := storage.GetAll()
+	writeJSON(w, http.StatusOK, tasks)
 	return nil
 }
 
@@ -310,8 +376,18 @@ func getTask(w http.ResponseWriter, r *http.Request) error {
 	// 5. Если не существует: return NotFound("task")
 	// 6. Отправь ответ: writeJSON(w, http.StatusOK, task)
 	// 7. return nil
-	_ = r
-	_ = w
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return BadRequest("invalid task ID")
+	}
+
+	task, exists := storage.Get(id)
+	if !exists {
+		return NotFound("task")
+	}
+
+	writeJSON(w, http.StatusOK, task)
 	return nil
 }
 
@@ -328,8 +404,18 @@ func createTask(w http.ResponseWriter, r *http.Request) error {
 	// 3. Создай задачу: task := storage.Create(req)
 	// 4. Отправь ответ: writeJSON(w, http.StatusCreated, task)
 	// 5. return nil
-	_ = r
-	_ = w
+	var req CreateTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return BadRequest("invalid request body")
+	}
+
+	if errs := req.Validate(); len(errs) > 0 {
+		return ValidationError(errs)
+	}
+
+	task := storage.Create(req)
+	writeJSON(w, http.StatusCreated, task)
+
 	return nil
 }
 
@@ -343,8 +429,30 @@ func updateTask(w http.ResponseWriter, r *http.Request) error {
 	// 5. Если не существует: return NotFound("task")
 	// 6. Отправь ответ: writeJSON(w, http.StatusOK, task)
 	// 7. return nil
-	_ = r
-	_ = w
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return BadRequest("invalid ID")
+	}
+
+	var req UpdateTaskRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return BadRequest("invalid request body")
+	}
+
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return ValidationError(errs)
+	}
+
+	task, exists := storage.Update(id, req)
+	if !exists {
+		return NotFound("task")
+	}
+
+	writeJSON(w, http.StatusOK, task)
+
 	return nil
 }
 
@@ -356,8 +464,18 @@ func deleteTask(w http.ResponseWriter, r *http.Request) error {
 	// 3. Если не существовала: return NotFound("task")
 	// 4. Отправь 204: w.WriteHeader(http.StatusNoContent)
 	// 5. return nil
-	_ = r
-	_ = w
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return err
+	}
+
+	deleted := storage.Delete(id)
+	if !deleted {
+		return NotFound("task")
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
@@ -370,6 +488,12 @@ func main() {
 	// mux.HandleFunc("POST /api/tasks", WrapHandler(createTask))
 	// mux.HandleFunc("PUT /api/tasks/{id}", WrapHandler(updateTask))
 	// mux.HandleFunc("DELETE /api/tasks/{id}", WrapHandler(deleteTask))
+
+	mux.HandleFunc("GET /api/tasks", WrapHandler(listTasks))
+	mux.HandleFunc("GET /api/tasks/{id}", WrapHandler(getTask))
+	mux.HandleFunc("POST /api/tasks", WrapHandler(createTask))
+	mux.HandleFunc("PUT /api/tasks/{id}", WrapHandler(updateTask))
+	mux.HandleFunc("DELETE /api/tasks/{id}", WrapHandler(deleteTask))
 
 	addr := ":8080"
 	fmt.Printf("Server starting on %s\n", addr)
@@ -392,10 +516,4 @@ func main() {
 	}
 
 	log.Fatal(server.ListenAndServe())
-
-	// Используем импорты
-	_ = json.NewEncoder
-	_ = strconv.Atoi
-	_ = strings.TrimSpace
-	_ = errors.As
 }
