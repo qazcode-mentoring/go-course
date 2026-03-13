@@ -70,9 +70,11 @@ func GetAccountByID(ctx context.Context, pool *pgxpool.Pool, id int) (Account, e
 		&account.CreatedAt,
 		&account.UpdatedAt,
 	)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Account{}, ErrAccountNotFound
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Account{}, ErrAccountNotFound
+		}
+		return Account{}, err
 	}
 
 	return account, nil
