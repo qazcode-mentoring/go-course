@@ -13,20 +13,21 @@ type Circle struct {
 // Area возвращает площадь круга (π × r²)
 func (c Circle) Area() float64 {
 	// TODO: реализуй метод
-	_ = math.Pi // подсказка
-	return 0
+	s := (c.Radius * c.Radius) * math.Pi
+	return s
 }
 
 // Perimeter возвращает периметр (длину окружности) круга (2 × π × r)
 func (c Circle) Perimeter() float64 {
 	// TODO: реализуй метод
-	return 0
+	return 2 * math.Pi * c.Radius
 }
 
 // Scale масштабирует круг (умножает радиус на factor)
 func (c *Circle) Scale(factor float64) {
 	// TODO: реализуй метод
 	// Используй указатель для изменения оригинала
+	c.Radius *= factor
 }
 
 // Rectangle представляет прямоугольник
@@ -37,18 +38,20 @@ type Rectangle struct {
 // Area возвращает площадь прямоугольника (width × height)
 func (r Rectangle) Area() float64 {
 	// TODO: реализуй метод
-	return 0
+	return r.Width * r.Height
 }
 
 // Perimeter возвращает периметр прямоугольника (2 × (width + height))
 func (r Rectangle) Perimeter() float64 {
 	// TODO: реализуй метод
-	return 0
+	return 2 * (r.Width + r.Height)
 }
 
 // Scale масштабирует прямоугольник (умножает стороны на factor)
 func (r *Rectangle) Scale(factor float64) {
 	// TODO: реализуй метод
+	r.Height *= factor
+	r.Width *= factor
 }
 
 func main() {
