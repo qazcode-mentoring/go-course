@@ -61,7 +61,7 @@ func playGame(maxHits int) {
 
 	go func() {
 		defer wg.Done()
-		go player("Pong", pongCh, pingCh, maxHits)
+		player("Pong", pongCh, pingCh, maxHits)
 	}()
 
 	pingCh <- ball
