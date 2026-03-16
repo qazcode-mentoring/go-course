@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 // Ball представляет мяч в игре
 type Ball struct {
@@ -20,6 +23,16 @@ func player(name string, inbox <-chan Ball, outbox chan<- Ball, maxHits int) {
 	//    - Закрой канал outbox
 	//    - Заверши функцию (return)
 	// 5. Иначе отправь ball в outbox
+	for ball := range inbox {
+		ball.Hits++
+		fmt.Printf("%v ударил мяч! (удар #%d)\n", name, ball.Hits)
+		if ball.Hits >= maxHits {
+			close(outbox)
+			return
+		} else {
+			outbox <- ball
+		}
+	}
 }
 
 // playGame запускает игру ping-pong
@@ -34,6 +47,26 @@ func playGame(maxHits int) {
 	// 4. Дождись завершения игры
 	//    Подсказка: можно использовать дополнительный канал done
 	//    или просто подождать, пока оба канала не закроются
+	pingCh := make(chan Ball)
+	pongCh := make(chan Ball)
+	ball := Ball{Hits: 0}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		player("Ping", pingCh, pongCh, maxHits)
+	}()
+
+	go func() {
+		defer wg.Done()
+		player("Pong", pongCh, pingCh, maxHits)
+	}()
+
+	pingCh <- ball
+
+	wg.Wait()
 }
 
 func main() {
