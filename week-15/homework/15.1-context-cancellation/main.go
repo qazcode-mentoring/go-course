@@ -38,20 +38,6 @@ func longRunningTask(ctx context.Context, taskID int, steps int, stepDuration ti
 	//    - Если нет - подожди stepDuration и увеличь счётчик
 	// 4. После завершения всех шагов верни их количество и nil
 
-	counter := 0
-
-	for i := range steps {
-		select {
-		case ctx.Done():
-			return counter
-		}
-	}
-
-	_ = ctx          // удали после реализации
-	_ = taskID       // удали после реализации
-	_ = steps        // удали после реализации
-	_ = stepDuration // удали после реализации
-	return 0, nil
 }
 
 // processWithCancellation запускает несколько задач параллельно.
