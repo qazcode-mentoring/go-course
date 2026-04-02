@@ -43,7 +43,8 @@ func longRunningTask(ctx context.Context, taskID int, steps int, stepDuration ti
 		select {
 		case <-ctx.Done():
 			return counter, ctx.Err()
-		case <-time.After(stepDuration):
+		default:
+			time.Sleep(stepDuration * time.Millisecond)
 			counter++
 		}
 	}
@@ -76,7 +77,7 @@ func processWithCancellation(ctx context.Context, taskCount int) <-chan TaskResu
 		go func(i int) {
 			defer wg.Done()
 			start := time.Now()
-			completed, err := longRunningTask(ctx, i, 5, 100*time.Millisecond)
+			completed, err := longRunningTask(ctx, i, 5, 5)
 
 			results <- TaskResult{
 				TaskID:         i,
@@ -86,6 +87,7 @@ func processWithCancellation(ctx context.Context, taskCount int) <-chan TaskResu
 				Error:          err,
 			}
 		}(i)
+
 	}
 
 	go func() {
@@ -105,7 +107,7 @@ func simulateSearch(ctx context.Context, source string) (string, error) {
 	select {
 	case <-time.After(delay):
 		// 20% шанс ошибки
-		if rand.IntN(5) == 0 { // 1/5=0.2
+		if rand.IntN(5) == 0 {
 			return "", fmt.Errorf("search failed in %s", source)
 		}
 		return fmt.Sprintf("Result from %s", source), nil
@@ -137,7 +139,7 @@ func searchFirst(ctx context.Context, query string, sources []string) (SearchRes
 	//     err    error
 	// }
 
-	ctx, cancel := context.WithCancel(ctx) // создаем дочерний контекст от ctx
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	type searchResponse struct {
@@ -169,7 +171,6 @@ func searchFirst(ctx context.Context, query string, sources []string) (SearchRes
 
 	}
 
-	// при первом успешном результате, вызываем cancel()
 	for i := 0; i < len(sources); i++ {
 		resp := <-results
 
@@ -197,7 +198,7 @@ func main() {
 		fmt.Printf("Задача завершена: %d/5 шагов за %v\n", completed, time.Since(start).Round(time.Millisecond))
 	}
 
-	//Тест 2: Задача с отменой через 250ms
+	// Тест 2: Задача с отменой через 250ms
 	fmt.Println("\n--- Тест 2: Задача с отменой через 250ms ---")
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -243,7 +244,7 @@ func main() {
 	}()
 	wg.Wait()
 
-	//Тест 4: Поиск первого результата
+	// Тест 4: Поиск первого результата
 	fmt.Println("\n--- Тест 4: Поиск первого результата ---")
 	sources := []string{"source-1", "source-2", "source-3", "source-4", "source-5"}
 
