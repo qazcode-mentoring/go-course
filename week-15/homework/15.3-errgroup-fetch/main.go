@@ -8,6 +8,8 @@ import (
 	"time"
 	// Раскомментируй после реализации
 	// "golang.org/x/sync/errgroup"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // DataItem представляет загруженные данные
@@ -73,10 +75,28 @@ func fetchAll(ctx context.Context, urls []string) ([]DataItem, error) {
 	// 5. При ошибке верни nil, err
 	// 6. При успехе верни results, nil
 
-	_ = ctx  // удали после реализации
-	_ = urls // удали после реализации
+	g, ctx := errgroup.WithContext(ctx)
+	results := make([]DataItem, len(urls))
 
-	return nil, fmt.Errorf("not implemented")
+	for i, url := range urls {
+		i, url := i, url
+
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+			if err != nil {
+				return err
+			}
+
+			results[i] = item
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 // fetchAllWithLimit загружает данные с ограничением параллелизма.
@@ -96,6 +116,24 @@ func fetchAllWithLimit(ctx context.Context, urls []string, limit int) ([]DataIte
 	// 6. g.Wait() - игнорируй возвращаемое значение
 	// 7. Верни results, errors
 
+	g := new(errgroup.Group)
+	g.SetLimit(limit)
+	results := make([]DataItem, len(urls))
+	errs := make([]error, len(urls))
+	var mu sync.Mutex
+
+	for i, url := range urls {
+		i, url := i, url
+
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+			if err != nil {
+				errs[i] = err
+			}
+
+			results[i] = item
+		})
+	}
 	_ = ctx   // удали после реализации
 	_ = urls  // удали после реализации
 	_ = limit // удали после реализации
