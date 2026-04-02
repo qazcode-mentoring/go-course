@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"math/rand/v2"
 	"sync"
 	"time"
+	// Раскомментируй после реализации
+	// "golang.org/x/sync/errgroup"
 )
 
 // DataItem представляет загруженные данные
