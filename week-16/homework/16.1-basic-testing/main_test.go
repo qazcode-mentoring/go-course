@@ -94,9 +94,9 @@ func TestTruncate(t *testing.T) {
 	// TODO: Проверь крайний случай maxLen <= 3
 	// TODO: Проверь строку равную maxLen (не должна обрезаться)
 
-	res1 := Truncate("hi", 3)
-	if res1 != "hi" {
-		t.Errorf("Truncate(%q, 3) = %q; want %q", "hi", res1, "hi")
+	res1 := Truncate("hello", 6)
+	if res1 != "hello" {
+		t.Errorf("Truncate(%q, 3) = %q; want %q", "hello", res1, "hello")
 	}
 
 	res2 := Truncate("hello world", 8)
