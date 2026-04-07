@@ -38,12 +38,17 @@ func longRunningTask(ctx context.Context, taskID int, steps int, stepDuration ti
 	//    - Если нет - подожди stepDuration и увеличь счётчик
 	// 4. После завершения всех шагов верни их количество и nil
 
-	_ = ctx          // удали после реализации
-	_ = taskID       // удали после реализации
-	_ = steps        // удали после реализации
-	_ = stepDuration // удали после реализации
-
-	return 0, nil
+	counter := 0
+	for i := 0; i < steps; i++ {
+		select {
+		case <-ctx.Done():
+			return counter, ctx.Err()
+		default:
+			time.Sleep(stepDuration * time.Millisecond)
+			counter++
+		}
+	}
+	return counter, nil
 }
 
 // processWithCancellation запускает несколько задач параллельно.
@@ -64,12 +69,31 @@ func processWithCancellation(ctx context.Context, taskCount int) <-chan TaskResu
 	// 5. Верни канал
 
 	results := make(chan TaskResult)
+	wg := sync.WaitGroup{}
 
-	_ = ctx       // удали после реализации
-	_ = taskCount // удали после реализации
+	for i := 0; i < taskCount; i++ {
+		wg.Add(1)
 
-	// Заглушка: сразу закрываем канал
-	close(results)
+		go func(i int) {
+			defer wg.Done()
+			start := time.Now()
+			completed, err := longRunningTask(ctx, i, 5, 5)
+
+			results <- TaskResult{
+				TaskID:         i,
+				CompletedSteps: completed,
+				TotalSteps:     5,
+				Duration:       time.Since(start),
+				Error:          err,
+			}
+		}(i)
+
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
 	return results
 }
@@ -78,7 +102,7 @@ func processWithCancellation(ctx context.Context, taskCount int) <-chan TaskResu
 // Занимает случайное время от 50ms до 300ms.
 func simulateSearch(ctx context.Context, source string) (string, error) {
 	// Случайная задержка
-	delay := time.Duration(50+rand.IntN(250)) * time.Millisecond
+	delay := time.Duration(50+rand.IntN(300)) * time.Millisecond
 
 	select {
 	case <-time.After(delay):
@@ -115,11 +139,48 @@ func searchFirst(ctx context.Context, query string, sources []string) (SearchRes
 	//     err    error
 	// }
 
-	_ = ctx     // удали после реализации
-	_ = query   // удали после реализации
-	_ = sources // удали после реализации
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	return SearchResult{}, fmt.Errorf("not implemented")
+	type searchResponse struct {
+		result SearchResult
+		err    error
+	}
+
+	results := make(chan searchResponse, len(sources))
+
+	for _, source := range sources {
+		go func(source string) {
+			start := time.Now()
+			data, err := simulateSearch(ctx, source)
+
+			res := searchResponse{
+				result: SearchResult{
+					Source:   source,
+					Data:     data,
+					Duration: time.Since(start),
+				},
+				err: err,
+			}
+
+			select {
+			case results <- res:
+			case <-ctx.Done():
+			}
+		}(source)
+
+	}
+
+	for i := 0; i < len(sources); i++ {
+		resp := <-results
+
+		if resp.err == nil {
+			cancel()
+			return resp.result, nil
+		}
+	}
+
+	return SearchResult{}, fmt.Errorf("all searches failed")
 }
 
 func main() {

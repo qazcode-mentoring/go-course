@@ -72,11 +72,27 @@ func fetchAll(ctx context.Context, urls []string) ([]DataItem, error) {
 	// 4. Дождись завершения: err := g.Wait()
 	// 5. При ошибке верни nil, err
 	// 6. При успехе верни results, nil
+	g, ctx := errgroup.WithContext(ctx)
+	results := make([]DataItem, len(urls))
 
-	_ = ctx  // удали после реализации
-	_ = urls // удали после реализации
+	for i, url := range urls {
+		i, url = i, url
 
-	return nil, fmt.Errorf("not implemented")
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+			if err != nil {
+				return err
+			}
+			results[i] = item
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 // fetchAllWithLimit загружает данные с ограничением параллелизма.
@@ -96,15 +112,34 @@ func fetchAllWithLimit(ctx context.Context, urls []string, limit int) ([]DataIte
 	// 6. g.Wait() - игнорируй возвращаемое значение
 	// 7. Верни results, errors
 
-	_ = ctx   // удали после реализации
-	_ = urls  // удали после реализации
-	_ = limit // удали после реализации
+	g := new(errgroup.Group)
+	g.SetLimit(limit)
 
-	// Заглушка для sync.Mutex чтобы импорт не ломался
+	var results []DataItem
+	var errs []error
+
 	var mu sync.Mutex
-	_ = mu
+	for _, url := range urls {
+		url := url
 
-	return nil, nil
+		g.Go(func() error {
+			item, err := simulateFetch(ctx, url)
+
+			mu.Lock()
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				results = append(results, item)
+			}
+			mu.Unlock()
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	return results, errs
 }
 
 // aggregateData собирает данные из нескольких источников и агрегирует результат.
@@ -122,11 +157,29 @@ func aggregateData(ctx context.Context, sources []string) (AggregatedResult, err
 	// 4. Верни результат
 	//
 	// Бонус: добавь TotalTime как максимальное время из всех Duration
+	items, errs := fetchAllWithLimit(ctx, sources, 3)
 
-	_ = ctx     // удали после реализации
-	_ = sources // удали после реализации
+	var totalSize int
+	var maxDuration time.Duration
 
-	return AggregatedResult{}, fmt.Errorf("not implemented")
+	for _, item := range items {
+		totalSize += item.Size
+
+		if item.Duration > maxDuration {
+			maxDuration = item.Duration
+		}
+	}
+
+	res := AggregatedResult{
+		TotalItems:   len(items),
+		TotalSize:    totalSize,
+		TotalTime:    maxDuration,
+		SuccessCount: len(items),
+		ErrorCount:   len(errs),
+		Items:        items,
+	}
+
+	return res, nil
 }
 
 func main() {

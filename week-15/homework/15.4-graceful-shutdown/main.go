@@ -66,35 +66,30 @@ func (w *Worker) processTask(ctx context.Context, task Task) Result {
 // Start запускает воркера. Воркер читает задачи из jobs и отправляет результаты в results.
 // При отмене контекста воркер завершает текущую задачу и выходит.
 func (w *Worker) Start(ctx context.Context, jobs <-chan Task, results chan<- Result, wg *sync.WaitGroup) {
-	// TODO: реализуй метод
-	// 1. Добавь defer wg.Done()
-	// 2. Бесконечный цикл:
-	//    select {
-	//    case <-ctx.Done():
-	//        // Контекст отменён - выходим
-	//        fmt.Printf("Worker %d: завершение по контексту\n", w.ID)
-	//        return
-	//    case task, ok := <-jobs:
-	//        if !ok {
-	//            // Канал закрыт - выходим
-	//            fmt.Printf("Worker %d: канал задач закрыт\n", w.ID)
-	//            return
-	//        }
-	//        // Обрабатываем задачу
-	//        fmt.Printf("Worker %d: обработка задачи %d\n", w.ID, task.ID)
-	//        result := w.processTask(ctx, task)
-	//        // Отправляем результат (с проверкой контекста)
-	//        select {
-	//        case results <- result:
-	//        case <-ctx.Done():
-	//            return
-	//        }
-	//    }
+	defer wg.Done()
 
-	_ = ctx     // удали после реализации
-	_ = jobs    // удали после реализации
-	_ = results // удали после реализации
-	_ = wg      // удали после реализации
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("Worker %d: завершение по контексту\n", w.ID)
+			return
+		case task, ok := <-jobs:
+			if !ok {
+				fmt.Printf("Worker %d: канал задач закрыт\n", w.ID)
+				return
+			}
+
+			fmt.Printf("Worker %d: обработка задачи %d\n", w.ID, task.ID)
+			result := w.processTask(ctx, task)
+
+			// Отправляем результат, учитывая возможную отмену контекста
+			select {
+			case results <- result:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 // WorkerPool управляет пулом воркеров
@@ -125,28 +120,36 @@ func NewWorkerPool(n int) *WorkerPool {
 
 // Start запускает пул воркеров
 func (p *WorkerPool) Start(ctx context.Context) {
-	// TODO: реализуй метод
-	// 1. Проверь, не запущен ли уже пул (p.started)
-	// 2. Создай дочерний контекст с отменой
-	// 3. Для каждого воркера:
-	//    - Добавь 1 к p.workerWg
-	//    - Запусти горутину с worker.Start()
-	// 4. Установи p.started = true
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	_ = ctx // удали после реализации
+	if p.started {
+		return
+	}
+
+	// Создаем дочерний контекст для управления воркерами
+	var poolCtx context.Context
+	poolCtx, p.cancelFunc = context.WithCancel(ctx)
+
+	for _, worker := range p.workers {
+		p.workerWg.Add(1)
+		go worker.Start(poolCtx, p.jobs, p.results, &p.workerWg)
+	}
+
+	p.started = true
 }
 
 // Submit добавляет задачу в очередь. Возвращает false если пул остановлен.
 func (p *WorkerPool) Submit(task Task) bool {
-	// TODO: реализуй метод
-	// 1. Захвати mutex
-	// 2. Проверь p.stopped - если true, верни false
-	// 3. Отправь задачу в канал p.jobs
-	// 4. Верни true
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	_ = task // удали после реализации
+	if p.stopped {
+		return false
+	}
 
-	return false
+	p.jobs <- task
+	return true
 }
 
 // Results возвращает канал с результатами
@@ -157,22 +160,30 @@ func (p *WorkerPool) Results() <-chan Result {
 // Shutdown корректно останавливает пул
 // Ждёт завершения всех задач или до истечения таймаута
 func (p *WorkerPool) Shutdown(timeout time.Duration) error {
-	// TODO: реализуй метод
-	// 1. Захвати mutex и установи p.stopped = true
-	// 2. Закрой канал задач (close(p.jobs))
-	// 3. Отмени контекст (p.cancelFunc())
-	// 4. Создай канал для сигнала завершения
-	// 5. Запусти горутину, которая:
-	//    - Ждёт p.workerWg.Wait()
-	//    - Закрывает канал results
-	//    - Отправляет сигнал в канал завершения
-	// 6. Используй select для ожидания:
-	//    - Канал завершения - вернуть nil
-	//    - time.After(timeout) - вернуть ошибку таймаута
+	p.mu.Lock()
+	if p.stopped {
+		p.mu.Unlock()
+		return nil
+	}
+	p.stopped = true
+	p.mu.Unlock()
 
-	_ = timeout // удали после реализации
+	close(p.jobs)  // Больше задачи не принимаем
+	p.cancelFunc() // Сигнализируем воркерам об отмене
 
-	return fmt.Errorf("not implemented")
+	done := make(chan struct{})
+	go func() {
+		p.workerWg.Wait()
+		close(p.results) // Закрываем результаты только когда все воркеры вышли
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("shutdown timeout")
+	}
 }
 
 // Service представляет сервис с фоновыми задачами
@@ -193,18 +204,18 @@ func NewService() *Service {
 
 // Start запускает сервис и все фоновые задачи
 func (s *Service) Start(ctx context.Context) error {
-	// TODO: реализуй метод
-	// 1. Создай дочерний контекст с отменой
-	// 2. Запусти пул воркеров
-	// 3. Запусти фоновую задачу (например, периодический health check):
-	//    s.wg.Add(1)
-	//    go s.runHealthCheck()
-	// 4. Запусти обработчик результатов:
-	//    s.wg.Add(1)
-	//    go s.processResults()
-	// 5. Сохрани время старта
+	s.ctx, s.cancel = context.WithCancel(ctx)
+	s.startTime = time.Now()
 
-	_ = ctx // удали после реализации
+	// Запускаем пул
+	s.pool.Start(s.ctx)
+
+	// Фоновые задачи
+	s.wg.Add(1)
+	go s.runHealthCheck()
+
+	s.wg.Add(1)
+	go s.processResults()
 
 	return nil
 }
@@ -248,16 +259,27 @@ func (s *Service) processResults() {
 
 // Shutdown корректно останавливает сервис
 func (s *Service) Shutdown(ctx context.Context) error {
-	// TODO: реализуй метод
-	// 1. Отмени контекст сервиса (s.cancel())
-	// 2. Останови пул воркеров с таймаутом
-	// 3. Дождись завершения фоновых задач (s.wg.Wait())
-	//    с проверкой контекста shutdown
-	// 4. Выведи "Сервис остановлен"
+	fmt.Println("Сервис: начало остановки...")
 
-	_ = ctx // удали после реализации
+	s.cancel() // 1. Отменяем контекст сервиса
 
-	return fmt.Errorf("not implemented")
+	// 2. Останавливаем пул (даем ему 5 секунд на завершение задач)
+	err := s.pool.Shutdown(5 * time.Second)
+
+	// 3. Ждем завершения фоновых задач (HealthCheck и processResults)
+	waitDone := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(waitDone)
+	}()
+
+	select {
+	case <-waitDone:
+		fmt.Println("Сервис остановлен")
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("service shutdown interrupted: %w", ctx.Err())
+	}
 }
 
 // SubmitTask добавляет задачу в сервис
