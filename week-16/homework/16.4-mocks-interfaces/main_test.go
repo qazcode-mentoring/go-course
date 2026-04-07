@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -43,13 +44,31 @@ func (m *MockUserRepository) GetByID(id int) (*User, error) {
 	// Если m.err != nil, верни nil, m.err
 	// Иначе ищи пользователя в m.users
 	// Если не найден, верни nil, ErrUserNotFound
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	for _, user := range m.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, ErrUserNotFound
 }
 
 func (m *MockUserRepository) GetByEmail(email string) (*User, error) {
 	// TODO: Реализуй метод
 	// Аналогично GetByID, но ищи в m.usersByEmail
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	for _, user := range m.usersByEmail {
+		if user.Email == email {
+			return user, nil
+		}
+	}
+	return nil, ErrUserNotFound
 }
 
 // MockMessageSender — мок для MessageSender
@@ -79,6 +98,17 @@ func (m *MockMessageSender) Send(to, subject, body string) error {
 	// TODO: Реализуй метод
 	// Если m.err != nil, верни m.err
 	// Иначе добавь сообщение в m.sentMessages и верни nil
+	if m.err != nil {
+		return m.err
+	}
+
+	send := SentMessage{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+	}
+
+	m.sentMessages = append(m.sentMessages, send)
 	return nil
 }
 
@@ -95,13 +125,27 @@ func TestNotificationService_NotifyUser_Success(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Hello!")
+	err := service.NotifyUser(1, "hello")
 
 	// Assert
 	// TODO: Проверь, что ошибки нет
 	// TODO: Проверь, что было отправлено 1 сообщение
 	// TODO: Проверь, что сообщение отправлено на правильный email
 
-	_ = service
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+	if len(sent) != 1 {
+		t.Errorf("expected 1 message to be sent, got: %d", len(sent))
+		return
+	}
+
+	msg := sent[0]
+	if msg.To != "alice@example.com" {
+		t.Errorf("expected email to be alice@example.com, got: %s", msg.To)
+	}
 }
 
 func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
@@ -112,13 +156,24 @@ func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser для несуществующего пользователя
-
+	err := service.NotifyUser(2, "some message")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Проверь, что ошибка содержит ErrUserNotFound (используй errors.Is)
 	// TODO: Проверь, что сообщения НЕ были отправлены
+	if err == nil {
+		t.Error("expected an error because user does not exist, but got nil")
+		return
+	}
 
-	_ = service
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected ErrUserNotFound, got %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+	if len(sent) != 0 {
+		t.Errorf("expected 0 message to be sent, got: %d", len(sent))
+	}
 }
 
 func TestNotificationService_NotifyUser_SendError(t *testing.T) {
@@ -133,12 +188,22 @@ func TestNotificationService_NotifyUser_SendError(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Test")
-
+	err := service.NotifyUser(1, "Test")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Пользователь найден, но отправка не удалась
+	if err == nil {
+		t.Error("expected an error, got nil")
+		return
+	}
+	if errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected user to be found, but got %v", err)
+	}
 
-	_ = service
+	expectedErr := "network error"
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("expected error to contain %q, but got: %q", expectedErr, err.Error())
+	}
 }
 
 func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
@@ -152,6 +217,7 @@ func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
 	// Act
 	message := "Important notification!"
 	// TODO: Вызови service.NotifyUser(1, message)
+	err := service.NotifyUser(1, message)
 
 	// Assert
 	// TODO: Проверь содержимое отправленного сообщения
@@ -159,8 +225,6 @@ func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
 	// - Subject должен содержать имя пользователя
 	// - Body должен быть равен message
 
-	_ = service
-	_ = message
 }
 
 // === Тесты для NotifyByEmail ===
