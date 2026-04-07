@@ -5,69 +5,112 @@ import "testing"
 // TestReverse проверяет функцию Reverse
 func TestReverse(t *testing.T) {
 	// TODO: Проверь переворот обычной строки
-	// result := Reverse("hello")
-	// if result != "olleh" {
-	//     t.Errorf("Reverse(%q) = %q; want %q", "hello", result, "olleh")
-	// }
-
 	// TODO: Проверь пустую строку
-	// Пустая строка при перевороте остаётся пустой
-
 	// TODO: Проверь строку из одного символа
-	// Один символ при перевороте остаётся тем же
-
 	// TODO: Проверь строку с пробелами
-	// "a b" -> "b a"
+
+	res1 := Reverse("hello")
+	if res1 != "olleh" {
+		t.Errorf("Reverse(%q) = %q; want %q", "hello", res1, "olleh")
+	}
+
+	res2 := Reverse("")
+	if res2 != "" {
+		t.Errorf("Reverse(%q) = %q; want %q", "", res2, "")
+	}
+
+	res3 := Reverse("a")
+	if res3 != "a" {
+		t.Errorf("Reverse(%q) = %q; want %q", "a", res3, "a")
+	}
+
+	res4 := Reverse("a b")
+	if res4 != "b a" {
+		t.Errorf("Reverse(%q) = %q; want %q", "a b", res4, "b a")
+	}
 }
 
 // TestIsPalindrome проверяет функцию IsPalindrome
 func TestIsPalindrome(t *testing.T) {
 	// TODO: Проверь палиндром "radar"
-	// if !IsPalindrome("radar") {
-	//     t.Error("IsPalindrome(\"radar\") should be true")
-	// }
-
 	// TODO: Проверь палиндром "level"
-
 	// TODO: Проверь не-палиндром "hello"
-	// if IsPalindrome("hello") {
-	//     t.Error("IsPalindrome(\"hello\") should be false")
-	// }
-
 	// TODO: Проверь пустую строку (должна быть палиндромом)
-
 	// TODO: Проверь строку из одного символа
+
+	if !IsPalindrome("radar") {
+		t.Errorf("IsPalindrome(%q) = false; want true", "radar")
+	}
+
+	if !IsPalindrome("level") {
+		t.Errorf("IsPalindrome(%q) = false; want true", "level")
+	}
+
+	if IsPalindrome("hello") {
+		t.Errorf("IsPalindrome(%q) = true; want false", "hello")
+	}
+
+	if !IsPalindrome("") {
+		t.Errorf("IsPalindrome(%q) = false; want true", "")
+	}
+
+	if !IsPalindrome("a") {
+		t.Errorf("IsPalindrome(%q) = false; want true", "a")
+	}
 }
 
 // TestCountWords проверяет функцию CountWords
 func TestCountWords(t *testing.T) {
 	// TODO: Проверь обычное предложение
-	// result := CountWords("hello world")
-	// if result != 2 {
-	//     t.Errorf("CountWords(%q) = %d; want %d", "hello world", result, 2)
-	// }
-
 	// TODO: Проверь пустую строку (должно быть 0 слов)
-
 	// TODO: Проверь строку с множественными пробелами
-	// "  multiple   spaces  " должно дать 2 слова
-
 	// TODO: Проверь одно слово без пробелов
+
+	res1 := CountWords("hello world")
+	if res1 != 2 {
+		t.Errorf("CountWords(%q) = %d; want %d", "hello world", res1, 2)
+	}
+
+	res2 := CountWords("")
+	if res2 != 0 {
+		t.Errorf("CountWords(%q) = %d; want %d", "", res2, 0)
+	}
+
+	res3 := CountWords("  multiple   spaces")
+	if res3 != 2 {
+		t.Errorf("CountWords(%q) = %d; want %d", "  multiple   spaces", res3, 2)
+	}
+
+	res4 := CountWords("hi")
+	if res4 != 1 {
+		t.Errorf("CountWords(%q) = %d; want %d", "hi", res4, 1)
+	}
 }
 
 // TestTruncate проверяет функцию Truncate
 func TestTruncate(t *testing.T) {
 	// TODO: Проверь строку короче maxLen (не должна обрезаться)
-	// result := Truncate("Hi", 10)
-	// if result != "Hi" {
-	//     t.Errorf("Truncate(%q, 10) = %q; want %q", "Hi", result, "Hi")
-	// }
-
 	// TODO: Проверь строку длиннее maxLen (должна обрезаться с "...")
-	// "Hello, World!" с maxLen=10 -> "Hello, ..."
-
 	// TODO: Проверь крайний случай maxLen <= 3
-	// При maxLen=3 должно вернуться "..."
-
 	// TODO: Проверь строку равную maxLen (не должна обрезаться)
+
+	res1 := Truncate("hello", 6)
+	if res1 != "hello" {
+		t.Errorf("Truncate(%q, 3) = %q; want %q", "hello", res1, "hello")
+	}
+
+	res2 := Truncate("hello world", 8)
+	if res2 != "hello..." {
+		t.Errorf("Truncate(%q, 8) = %q; want %q", "hello world", res2, "hello...")
+	}
+
+	res3 := Truncate("long string", 3)
+	if res3 != "..." {
+		t.Errorf("Truncate(%q, 3) = %q; want %q", "long string", res3, "...")
+	}
+
+	res4 := Truncate("golang", 6)
+	if res4 != "golang" {
+		t.Errorf("Truncate(%q, 6) = %q; want %q", "golang", res4, "golang")
+	}
 }

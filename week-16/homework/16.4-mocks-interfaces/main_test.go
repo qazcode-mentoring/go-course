@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -43,13 +44,31 @@ func (m *MockUserRepository) GetByID(id int) (*User, error) {
 	// Если m.err != nil, верни nil, m.err
 	// Иначе ищи пользователя в m.users
 	// Если не найден, верни nil, ErrUserNotFound
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	for _, user := range m.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, ErrUserNotFound
 }
 
 func (m *MockUserRepository) GetByEmail(email string) (*User, error) {
 	// TODO: Реализуй метод
 	// Аналогично GetByID, но ищи в m.usersByEmail
-	return nil, nil
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	for _, user := range m.usersByEmail {
+		if user.Email == email {
+			return user, nil
+		}
+	}
+	return nil, ErrUserNotFound
 }
 
 // MockMessageSender — мок для MessageSender
@@ -79,6 +98,17 @@ func (m *MockMessageSender) Send(to, subject, body string) error {
 	// TODO: Реализуй метод
 	// Если m.err != nil, верни m.err
 	// Иначе добавь сообщение в m.sentMessages и верни nil
+	if m.err != nil {
+		return m.err
+	}
+
+	send := SentMessage{
+		To:      to,
+		Subject: subject,
+		Body:    body,
+	}
+
+	m.sentMessages = append(m.sentMessages, send)
 	return nil
 }
 
@@ -95,13 +125,26 @@ func TestNotificationService_NotifyUser_Success(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Hello!")
+	err := service.NotifyUser(1, "hello")
 
 	// Assert
 	// TODO: Проверь, что ошибки нет
 	// TODO: Проверь, что было отправлено 1 сообщение
 	// TODO: Проверь, что сообщение отправлено на правильный email
 
-	_ = service
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+	if len(sent) != 1 {
+		t.Fatalf("expected 1 message to be sent, got: %d", len(sent))
+	}
+
+	msg := sent[0]
+	if msg.To != "alice@example.com" {
+		t.Errorf("expected email to be alice@example.com, got: %q", msg.To)
+	}
 }
 
 func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
@@ -112,13 +155,23 @@ func TestNotificationService_NotifyUser_UserNotFound(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser для несуществующего пользователя
-
+	err := service.NotifyUser(2, "some message")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Проверь, что ошибка содержит ErrUserNotFound (используй errors.Is)
 	// TODO: Проверь, что сообщения НЕ были отправлены
+	if err == nil {
+		t.Fatal("expected an error because user does not exist, but got nil")
+	}
 
-	_ = service
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected ErrUserNotFound, got %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+	if len(sent) != 0 {
+		t.Errorf("expected 0 message to be sent, got: %d", len(sent))
+	}
 }
 
 func TestNotificationService_NotifyUser_SendError(t *testing.T) {
@@ -133,12 +186,21 @@ func TestNotificationService_NotifyUser_SendError(t *testing.T) {
 
 	// Act
 	// TODO: Вызови service.NotifyUser(1, "Test")
-
+	err := service.NotifyUser(1, "Test")
 	// Assert
 	// TODO: Проверь, что вернулась ошибка
 	// TODO: Пользователь найден, но отправка не удалась
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected user to be found, but got %v", err)
+	}
 
-	_ = service
+	expectedErr := "network error"
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("expected error to contain %q, but got: %q", expectedErr, err.Error())
+	}
 }
 
 func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
@@ -152,41 +214,114 @@ func TestNotificationService_NotifyUser_CorrectMessageContent(t *testing.T) {
 	// Act
 	message := "Important notification!"
 	// TODO: Вызови service.NotifyUser(1, message)
+	err := service.NotifyUser(1, message)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Assert
 	// TODO: Проверь содержимое отправленного сообщения
 	// - To должен быть "charlie@example.com"
 	// - Subject должен содержать имя пользователя
 	// - Body должен быть равен message
+	sent := mockSender.GetSentMessages()
 
-	_ = service
-	_ = message
+	if len(sent) != 1 {
+		t.Fatalf("expected 1 message to be sent, got %d", len(sent))
+	}
+
+	msg := sent[0]
+	if msg.To != "charlie@example.com" {
+		t.Errorf("To: expected %q, got %q", "charlie@example.com", msg.To)
+	}
+
+	if msg.Subject != "Уведомление для Charlie" {
+		t.Errorf("Subject: expected %q, got %q", "Charlie", msg.Subject)
+	}
+
+	if msg.Body != message {
+		t.Errorf("Body: expected %q, got %q", message, msg.Body)
+	}
 }
 
 // === Тесты для NotifyByEmail ===
 
 func TestNotificationService_NotifyByEmail_Success(t *testing.T) {
 	// TODO: Arrange — создай моки с пользователем
+	mockRepo := NewMockUserRepository()
+	mockRepo.AddUser(&User{ID: 1, Name: "Dam", Email: "dkairzhanov@beeline.kz"})
 
+	mockSender := NewMockMessageSender()
+	service := NewNotificationService(mockRepo, mockSender)
 	// TODO: Act — вызови NotifyByEmail
-
+	message := "Привет"
+	err := service.NotifyByEmail("dkairzhanov@beeline.kz", message)
 	// TODO: Assert — проверь успешную отправку
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+
+	if len(sent) != 1 {
+		t.Fatalf("expected 1 message to be sent, got %d", len(sent))
+	}
+
+	msg := sent[0]
+	if msg.To != "dkairzhanov@beeline.kz" {
+		t.Errorf("expected email to be dkairzhanov@beeline.kz, got: %q", msg.To)
+	}
 }
 
 func TestNotificationService_NotifyByEmail_UserNotFound(t *testing.T) {
 	// TODO: Arrange — создай моки БЕЗ пользователя с искомым email
+	mockRepo := NewMockUserRepository()
+	mockRepo.AddUser(&User{ID: 1, Name: "Islam", Email: "iuzakpai@beeline.kz"})
+	mockSender := NewMockMessageSender()
+	service := NewNotificationService(mockRepo, mockSender)
 
 	// TODO: Act — вызови NotifyByEmail с несуществующим email
-
+	err := service.NotifyByEmail("damirkairzhanov4@gmail.com", "hi")
 	// TODO: Assert — проверь, что вернулась ошибка
+	if err == nil {
+		t.Fatal("expected no error because email does not exist, but go nil")
+	}
+
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected error ErrUserNotFound, got: %v", err)
+	}
+
+	sent := mockSender.GetSentMessages()
+	if len(sent) != 0 {
+		t.Errorf("expected 0 message to be sent, got: %d", len(sent))
+	}
 }
 
 func TestNotificationService_NotifyByEmail_SendError(t *testing.T) {
 	// TODO: Arrange — создай моки, настрой ошибку в sender
+	mockRepo := NewMockUserRepository()
+	mockRepo.AddUser(&User{ID: 1, Name: "Damir", Email: "damir@gmail.com"})
+
+	mockSender := NewMockMessageSender()
+	expectedErr := "network error"
+	mockSender.SetError(errors.New(expectedErr))
+
+	service := NewNotificationService(mockRepo, mockSender)
 
 	// TODO: Act — вызови NotifyByEmail
-
+	err := service.NotifyByEmail("damir@gmail.com", "hello")
 	// TODO: Assert — проверь, что вернулась ошибка отправки
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+
+	if errors.Is(err, ErrUserNotFound) {
+		t.Errorf("expected user to be found, but got %v", err)
+	}
+
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("expected error contain %q, but got: %q", expectedErr, err.Error())
+	}
 }
 
 // === Тесты для BroadcastToUsers ===
@@ -202,13 +337,25 @@ func TestNotificationService_BroadcastToUsers_AllSuccess(t *testing.T) {
 	service := NewNotificationService(mockRepo, mockSender)
 
 	// Act
-	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
+	// TODO:
+	sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
 
 	// Assert
 	// TODO: Проверь, что sent == 3, failed == 0
 	// TODO: Проверь, что отправлено 3 сообщения
 
-	_ = service
+	if sent != 3 {
+		t.Errorf("expected 3 sent, got: %d", sent)
+	}
+
+	if failed != 0 {
+		t.Errorf("expected 0 failed, got: %d", failed)
+	}
+
+	sentMsg := mockSender.GetSentMessages()
+	if len(sentMsg) != 3 {
+		t.Errorf("expected 3 messages, got: %d", len(sentMsg))
+	}
 }
 
 func TestNotificationService_BroadcastToUsers_SomeNotFound(t *testing.T) {
@@ -221,12 +368,18 @@ func TestNotificationService_BroadcastToUsers_SomeNotFound(t *testing.T) {
 	service := NewNotificationService(mockRepo, mockSender)
 
 	// Act
-	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
+	// TODO:
+	sent, failed := service.BroadcastToUsers([]int{1, 2, 3}, "Broadcast!")
 
 	// Assert
 	// TODO: Проверь, что sent == 1, failed == 2
+	if sent != 1 {
+		t.Fatalf("expected sent 1 message but got: %d", sent)
+	}
 
-	_ = service
+	if failed != 2 {
+		t.Errorf("expected 2 failed but got: %d", failed)
+	}
 }
 
 func TestNotificationService_BroadcastToUsers_SendErrors(t *testing.T) {
@@ -244,12 +397,18 @@ func TestNotificationService_BroadcastToUsers_SendErrors(t *testing.T) {
 	service := NewNotificationService(mockRepo, mockSender)
 
 	// Act
-	// TODO: sent, failed := service.BroadcastToUsers([]int{1, 2}, "Broadcast!")
+	// TODO:
+	sent, failed := service.BroadcastToUsers([]int{1, 2}, "Broadcast!")
 
 	// Assert
 	// TODO: Проверь, что sent == 0, failed == 2
+	if sent != 0 {
+		t.Fatalf("expected 0 sent message, but got: %d", sent)
+	}
 
-	_ = service
+	if failed != 2 {
+		t.Errorf("expected 2 failed, but got: %d", failed)
+	}
 }
 
 func TestNotificationService_BroadcastToUsers_EmptyList(t *testing.T) {
@@ -259,11 +418,22 @@ func TestNotificationService_BroadcastToUsers_EmptyList(t *testing.T) {
 	service := NewNotificationService(mockRepo, mockSender)
 
 	// Act
-	// TODO: sent, failed := service.BroadcastToUsers([]int{}, "Broadcast!")
+	// TODO:
+	sent, failed := service.BroadcastToUsers([]int{}, "Broadcast!")
 
 	// Assert
 	// TODO: Проверь, что sent == 0, failed == 0
 	// TODO: Проверь, что сообщения не отправлялись
+	if sent != 0 {
+		t.Fatalf("expected 0 sent messages, but got: %d", sent)
+	}
 
-	_ = service
+	if failed != 0 {
+		t.Fatalf("expected 0 failed, but got: %d", sent)
+	}
+
+	sentMsg := mockSender.GetSentMessages()
+	if len(sentMsg) != 0 {
+		t.Errorf("expected no messages, but got: %d", len(sentMsg))
+	}
 }
