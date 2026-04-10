@@ -52,10 +52,16 @@ func LoadConfig(filename string) (*Config, error) {
 	// При ошибке используй fmt.Errorf с %w для wrapping
 
 	// Подавляем предупреждение о неиспользуемых импортах
-	_ = os.ReadFile
-	_ = json.Unmarshal
-
-	return nil, nil
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка чтения файла конфигурации: %w", err)
+	}
+	config := &Config{}
+	err = json.Unmarshal(data, config)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка парсинга JSON: %w", err)
+	}
+	return config, nil
 }
 
 // SaveConfig сохраняет конфигурацию в JSON-файл с форматированием
@@ -64,6 +70,14 @@ func SaveConfig(filename string, cfg *Config) error {
 	// 1. Сериализуй конфигурацию с помощью json.MarshalIndent
 	// 2. Запиши в файл с помощью os.WriteFile
 	// Права доступа: 0644
+	data, err := json.MarshalIndent(cfg, "", "  ") // преобразуем в json-формат
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filename, []byte(data), 0644)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -80,16 +94,36 @@ func ValidateConfig(cfg *Config) error {
 	//
 	// Собери все ошибки в слайс и верни их вместе
 
-	var errors []string
+	var errs []string
 
-	// Пример проверки:
-	// if cfg.AppName == "" {
-	//     errors = append(errors, "app_name обязателен")
-	// }
-
-	if len(errors) > 0 {
-		return fmt.Errorf("ошибки валидации: %s", strings.Join(errors, "; "))
+	if cfg.AppName == "" {
+		errs = append(errs, "app_name не может быть пустым")
 	}
+
+	if cfg.Server.Host == "" {
+		errs = append(errs, "server.host не может быть пустым")
+	}
+	if cfg.Server.Port < 1 || cfg.Server.Port > 65535 {
+		errs = append(errs, "server.port должен быть в диапазоне 1-65535")
+	}
+
+	if cfg.Database.Host == "" {
+		errs = append(errs, "database.host не может быть пустым")
+	}
+	if cfg.Database.Port < 1 || cfg.Database.Port > 65535 {
+		errs = append(errs, "database.port должен быть в диапазоне 1-65535")
+	}
+	if cfg.Database.User == "" {
+		errs = append(errs, "database.user не может быть пустым")
+	}
+	if cfg.Database.DBName == "" {
+		errs = append(errs, "database.db_name не может быть пустым")
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("ошибки валидации: %s", strings.Join(errs, "; "))
+	}
+
 	return nil
 }
 
@@ -102,6 +136,29 @@ func ApplyDefaults(cfg *Config) {
 	// - Database.SSLMode: "disable" (если пустой)
 	// - Logging.Level: "info" (если пустой)
 	// - Logging.Format: "json" (если пустой)
+	if cfg.Server.ReadTimeout == 0 {
+		cfg.Server.ReadTimeout = 30
+	}
+
+	if cfg.Server.WriteTimeout == 0 {
+		cfg.Server.WriteTimeout = 30
+	}
+
+	if cfg.Database.Port == 0 {
+		cfg.Database.Port = 5432
+	}
+
+	if cfg.Database.SSLMode == "" {
+		cfg.Database.SSLMode = "disable"
+	}
+
+	if cfg.Logging.Level == "" {
+		cfg.Logging.Level = "info"
+	}
+
+	if cfg.Logging.Format == "" {
+		cfg.Logging.Format = "json"
+	}
 }
 
 // NewDefaultConfig возвращает конфигурацию со значениями по умолчанию
