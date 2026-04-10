@@ -63,16 +63,31 @@ func ExtractField(data map[string]any, key string) (any, bool) {
 
 // ExtractNestedField извлекает вложенное значение по пути "key1.key2.key3"
 func ExtractNestedField(data map[string]any, path string) (any, bool) {
-	// TODO: реализуй извлечение вложенных полей
-	// 1. Разбей path по точке: strings.Split(path, ".")
-	// 2. Пройди по частям пути, на каждом шаге проверяя тип
-	// 3. Для промежуточных ключей ожидай map[string]any
-	// 4. Верни финальное значение или nil, false если путь не найден
+	keys := strings.Split(path, ".")
+	var current any = data
 
-	// Подсказка: используй type assertion с проверкой
-	// if nested, ok := current.(map[string]any); ok { ... }
+	for i, key := range keys {
+		// Чтобы искать ключ, текущий элемент ДОЛЖЕН быть мапой
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
 
-	_ = strings.Split(path, ".") // раскомментируй и используй
+		// Пытаемся достать значение по ключу
+		val, found := m[key]
+		if !found {
+			return nil, false
+		}
+
+		// Если это был последний ключ в пути — мы у цели!
+		if i == len(keys)-1 {
+			return val, true
+		}
+
+		// Иначе — спускаемся глубже
+		current = val
+	}
+
 	return nil, false
 }
 
