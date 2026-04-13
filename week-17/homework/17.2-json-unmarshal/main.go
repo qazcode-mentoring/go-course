@@ -30,11 +30,13 @@ func ParseUser(jsonData string) (*User, error) {
 	// 1. Создай переменную типа User
 	// 2. Используй json.Unmarshal([]byte(jsonData), &user)
 	// 3. Верни указатель на user и ошибку
+	var user User
+	err := json.Unmarshal([]byte(jsonData), &user)
+	if err != nil {
+		return nil, err
+	}
 
-	// Подавляем предупреждение о неиспользуемом импорте
-	_ = json.Unmarshal
-
-	return nil, nil
+	return &user, nil
 }
 
 // ParseUsers парсит JSON-массив пользователей
@@ -43,14 +45,26 @@ func ParseUsers(jsonData string) ([]User, error) {
 	// 1. Создай слайс []User
 	// 2. Используй json.Unmarshal
 	// 3. Верни слайс и ошибку
-	return nil, nil
+	var users []User
+	for _, user := range users {
+		err := json.Unmarshal([]byte(jsonData), &user)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return users, nil
 }
 
 // ParseDynamic парсит JSON неизвестной структуры в map
 func ParseDynamic(jsonData string) (map[string]any, error) {
 	// TODO: реализуй парсинг в map[string]any
 	// Это полезно когда структура JSON заранее неизвестна
-	return nil, nil
+	var data map[string]any
+	err := json.Unmarshal([]byte(jsonData), &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // ExtractField безопасно извлекает значение по ключу
@@ -58,6 +72,11 @@ func ExtractField(data map[string]any, key string) (any, bool) {
 	// TODO: извлеки значение из map по ключу
 	// Верни значение и true если ключ существует
 	// Верни nil и false если ключа нет
+	if _, ok := data[key]; ok {
+		value := data[key]
+		return value, true
+	}
+
 	return nil, false
 }
 
@@ -68,11 +87,27 @@ func ExtractNestedField(data map[string]any, path string) (any, bool) {
 	// 2. Пройди по частям пути, на каждом шаге проверяя тип
 	// 3. Для промежуточных ключей ожидай map[string]any
 	// 4. Верни финальное значение или nil, false если путь не найден
+	keys := strings.Split(path, ".")
+	var current any = data
 
-	// Подсказка: используй type assertion с проверкой
-	// if nested, ok := current.(map[string]any); ok { ... }
+	for i, key := range keys {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
 
-	_ = strings.Split(path, ".") // раскомментируй и используй
+		val, found := m[key]
+		if !found {
+			return nil, false
+		}
+
+		if i == len(keys)-1 {
+			return val, true
+		}
+
+		current = val
+	}
+
 	return nil, false
 }
 
