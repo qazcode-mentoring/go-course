@@ -39,18 +39,16 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	// 1. Установи заголовок Content-Type: application/json
 	// 2. Установи статус-код: w.WriteHeader(status)
 	// 3. Закодируй data в JSON: json.NewEncoder(w).Encode(data)
-	_ = w      // убрать после реализации
-	_ = status // убрать после реализации
-	_ = data   // убрать после реализации
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
 }
 
 // writeError отправляет JSON ответ с ошибкой
 func writeError(w http.ResponseWriter, status int, message string) {
 	// TODO: реализуй функцию
 	// Используй writeJSON с ErrorResponse{Error: message}
-	_ = w       // убрать после реализации
-	_ = status  // убрать после реализации
-	_ = message // убрать после реализации
+	writeJSON(w, status, ErrorResponse{Error: message})
 }
 
 // parseJSON читает JSON из тела запроса в структуру v
@@ -58,8 +56,10 @@ func parseJSON(r *http.Request, v any) error {
 	// TODO: реализуй функцию
 	// 1. Используй json.NewDecoder(r.Body).Decode(v)
 	// 2. Верни ошибку, если декодирование не удалось
-	_ = r // убрать после реализации
-	_ = v // убрать после реализации
+	err := json.NewDecoder(r.Body).Decode(v)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -68,8 +68,7 @@ func parseJSON(r *http.Request, v any) error {
 func listBooksHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// Используй writeJSON для отправки списка books
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	writeJSON(w, http.StatusOK, books)
 }
 
 // getBookHandler обрабатывает GET /api/books/{id}
@@ -81,8 +80,19 @@ func getBookHandler(w http.ResponseWriter, r *http.Request) {
 	// 3. Найди книгу в slice books
 	// 4. Если не найдена — writeError(w, http.StatusNotFound, "book not found")
 	// 5. Если найдена — writeJSON(w, http.StatusOK, book)
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid ID")
+	}
+
+	for _, book := range books {
+		if book.ID == id {
+			writeJSON(w, http.StatusOK, book)
+			return
+		}
+	}
+	writeError(w, http.StatusNotFound, "book not found")
 }
 
 // createBookHandler обрабатывает POST /api/books
@@ -96,8 +106,21 @@ func createBookHandler(w http.ResponseWriter, r *http.Request) {
 	// 5. Присвой book.ID = nextBookID, увеличь nextBookID
 	// 6. Добавь книгу в slice: books = append(books, book)
 	// 7. Верни книгу: writeJSON(w, http.StatusCreated, book)
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	var book Book
+	if err := parseJSON(r, &book); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	if book.Title == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	book.ID = nextBookID
+	nextBookID++
+
+	books = append(books, book)
+	writeJSON(w, http.StatusCreated, book)
 }
 
 // deleteBookHandler обрабатывает DELETE /api/books/{id}
@@ -109,18 +132,28 @@ func deleteBookHandler(w http.ResponseWriter, r *http.Request) {
 	// 3. Если не найдена — writeError(w, http.StatusNotFound, "book not found")
 	// 4. Удали из slice: books = append(books[:index], books[index+1:]...)
 	// 5. Верни успех: writeJSON(w, http.StatusOK, SuccessResponse{Message: "book deleted successfully"})
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid ID")
+	}
+
+	for index, book := range books {
+		if book.ID == id {
+			books = append(books[:index], books[index+1:]...)
+		}
+	}
+	writeJSON(w, http.StatusOK, SuccessResponse{Message: "book deleted successfully"})
 }
 
 func main() {
 	mux := http.NewServeMux()
 
 	// TODO: зарегистрируй обработчики
-	// mux.HandleFunc("GET /api/books", listBooksHandler)
-	// mux.HandleFunc("GET /api/books/{id}", getBookHandler)
-	// mux.HandleFunc("POST /api/books", createBookHandler)
-	// mux.HandleFunc("DELETE /api/books/{id}", deleteBookHandler)
+	mux.HandleFunc("GET /api/books", listBooksHandler)
+	mux.HandleFunc("GET /api/books/{id}", getBookHandler)
+	mux.HandleFunc("POST /api/books", createBookHandler)
+	mux.HandleFunc("DELETE /api/books/{id}", deleteBookHandler)
 
 	addr := ":8080"
 	fmt.Printf("Server starting on %s\n", addr)
@@ -136,8 +169,4 @@ func main() {
 	}
 
 	log.Fatal(server.ListenAndServe())
-
-	// Убираем предупреждения о неиспользуемых импортах
-	_ = json.NewEncoder
-	_ = strconv.Atoi
 }
