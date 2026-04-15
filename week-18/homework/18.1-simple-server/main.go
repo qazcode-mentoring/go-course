@@ -13,8 +13,8 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Установи Content-Type: text/plain
 	// 2. Верни текст "Hello, World!"
 	// Подсказка: используй fmt.Fprintf(w, "Hello, World!")
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, "Hello, world!")
 }
 
 // healthHandler обрабатывает запросы к "/health"
@@ -23,8 +23,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// 1. Установи Content-Type: text/plain
 	// 2. Верни текст "OK"
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, "OK")
 }
 
 // infoHandler обрабатывает запросы к "/info"
@@ -43,15 +43,19 @@ func infoHandler(w http.ResponseWriter, r *http.Request) {
 	// Path: /info
 	// User-Agent: curl/8.1.2
 	// Remote Address: 127.0.0.1:52341
-	_ = r // убрать после реализации
-	_ = w // убрать после реализации
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintf(w,
+		"Method: %s\n"+
+			"Path: %s\nUser-Agent: %s\n"+
+			"Remote Address: %s\n",
+		r.Method, r.URL.Path, r.Header.Get("User-Agent"), r.RemoteAddr)
 }
 
 func main() {
 	// TODO: зарегистрируй обработчики с помощью http.HandleFunc
-	// http.HandleFunc("/", helloHandler)
-	// http.HandleFunc("/health", healthHandler)
-	// http.HandleFunc("/info", infoHandler)
+	http.HandleFunc("/", helloHandler)
+	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/info", infoHandler)
 
 	addr := ":8080"
 	fmt.Printf("Server starting on %s\n", addr)
@@ -61,6 +65,6 @@ func main() {
 	fmt.Println("  GET /info   - Request info")
 
 	// TODO: запусти сервер с помощью http.ListenAndServe
-	// log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal(http.ListenAndServe(addr, nil))
 	log.Println("Server implementation not complete")
 }
