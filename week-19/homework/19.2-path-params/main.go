@@ -165,25 +165,25 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	// 1. Установи заголовок Content-Type: application/json
 	// 2. Установи статус-код: w.WriteHeader(status)
 	// 3. Закодируй data в JSON: json.NewEncoder(w).Encode(data)
-	_ = w
-	_ = status
-	_ = data
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
 }
 
 // writeError отправляет JSON ответ с ошибкой
 func writeError(w http.ResponseWriter, status int, message string) {
 	// TODO: реализуй функцию
 	// Используй writeJSON с ErrorResponse{Error: message}
-	_ = w
-	_ = status
-	_ = message
+	writeJSON(w, status, ErrorResponse{message})
 }
 
 // parseJSON читает JSON из тела запроса
 func parseJSON(r *http.Request, v any) error {
 	// TODO: реализуй функцию
-	_ = r
-	_ = v
+	err := json.NewDecoder(r.Body).Decode(v)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -193,9 +193,12 @@ func parseIntParam(r *http.Request, name string) (int, error) {
 	// 1. Получи значение: r.PathValue(name)
 	// 2. Конвертируй: strconv.Atoi(...)
 	// 3. Верни результат или ошибку
-	_ = r
-	_ = name
-	return 0, nil
+	valStr := r.PathValue(name)
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
 }
 
 // --- Обработчики пользователей ---
@@ -204,8 +207,8 @@ func parseIntParam(r *http.Request, name string) (int, error) {
 func listUsersHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// Верни список всех пользователей
-	_ = r
-	_ = w
+	users := userStorage.GetAll()
+	writeJSON(w, http.StatusOK, users)
 }
 
 // getUserHandler обрабатывает GET /api/users/{userId}
@@ -213,8 +216,17 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// 1. Получи userId из пути
 	// 2. Найди пользователя или верни 404
-	_ = r
-	_ = w
+	userId, err := parseIntParam(r, r.PathValue("userId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid userID")
+		return
+	}
+	user, exists := userStorage.Get(userId)
+	if !exists {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
 }
 
 // --- Обработчики постов ---
@@ -228,8 +240,18 @@ func listUserPostsHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Если не существует: writeError(w, http.StatusNotFound, "user not found")
 	// 5. Получи посты: posts := postStorage.GetByUserID(userID)
 	// 6. Верни посты: writeJSON(w, http.StatusOK, posts)
-	_ = r
-	_ = w
+	userId, err := parseIntParam(r, r.PathValue("userId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid userID")
+		return
+	}
+	if exists := userStorage.Exists(userId); exists {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	posts := postStorage.GetByUserID(userId)
+	writeJSON(w, http.StatusOK, posts)
 }
 
 // getUserPostHandler обрабатывает GET /api/users/{userId}/posts/{postId}
@@ -241,8 +263,34 @@ func getUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что пост существует — иначе 404 "post not found"
 	// 5. Проверь, что post.UserID == userID — иначе 404 "post not found"
 	// 6. Верни пост
-	_ = r
-	_ = w
+	userId, err := parseIntParam(r, r.PathValue("userId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid userID")
+		return
+	}
+
+	postId, err := parseIntParam(r, r.PathValue("postId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid postID")
+		return
+	}
+
+	exists := userStorage.Exists(userId)
+	if !exists {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	post, exists := postStorage.Get(postId)
+	if !exists {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+	if post.UserID != userId {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, post)
 }
 
 // createUserPostHandler обрабатывает POST /api/users/{userId}/posts
@@ -254,8 +302,29 @@ func createUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что title не пустой — иначе 400 "title is required"
 	// 5. Создай пост: post := postStorage.Create(userID, req)
 	// 6. Верни пост: writeJSON(w, http.StatusCreated, post)
-	_ = r
-	_ = w
+	userId, err := parseIntParam(r, r.PathValue("userId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid userID")
+		return
+	}
+
+	exists := userStorage.Exists(userId)
+	if !exists {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	var postReq CreatePostRequest
+
+	if err = parseJSON(r, postReq); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if strings.TrimSpace(postReq.Title) != "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	post := postStorage.Create(userId, postReq)
+	writeJSON(w, http.StatusOK, post)
 }
 
 // deleteUserPostHandler обрабатывает DELETE /api/users/{userId}/posts/{postId}
@@ -267,8 +336,41 @@ func deleteUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что post.UserID == userID — иначе 404
 	// 5. Удали пост: postStorage.Delete(postID)
 	// 6. Верни 204: w.WriteHeader(http.StatusNoContent)
-	_ = r
-	_ = w
+	userId, err := parseIntParam(r, r.PathValue("userId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid userID")
+		return
+	}
+
+	postId, err := parseIntParam(r, r.PathValue("postId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "ivalid postId")
+		return
+	}
+
+	exists := userStorage.Exists(userId)
+	if !exists {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	post, exists := postStorage.Get(postId)
+	if !exists {
+		writeError(w, http.StatusBadRequest, "post not found")
+		return
+	}
+
+	if post.UserID != userId {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	deleted := postStorage.Delete(postId)
+	if !deleted {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func main() {
@@ -276,16 +378,16 @@ func main() {
 
 	// TODO: зарегистрируй обработчики
 	// Пользователи
-	// mux.HandleFunc("GET /api/users", listUsersHandler)
-	// mux.HandleFunc("GET /api/users/{userId}", getUserHandler)
+	mux.HandleFunc("GET /api/users", listUsersHandler)
+	mux.HandleFunc("GET /api/users/{userId}", getUserHandler)
 
-	// Посты пользователей (вложенные ресурсы)
-	// mux.HandleFunc("GET /api/users/{userId}/posts", listUserPostsHandler)
-	// mux.HandleFunc("GET /api/users/{userId}/posts/{postId}", getUserPostHandler)
-	// mux.HandleFunc("POST /api/users/{userId}/posts", createUserPostHandler)
-	// mux.HandleFunc("DELETE /api/users/{userId}/posts/{postId}", deleteUserPostHandler)
+	//Посты пользователей (вложенные ресурсы)
+	mux.HandleFunc("GET /api/users/{userId}/posts", listUserPostsHandler)
+	mux.HandleFunc("GET /api/users/{userId}/posts/{postId}", getUserPostHandler)
+	mux.HandleFunc("POST /api/users/{userId}/posts", createUserPostHandler)
+	mux.HandleFunc("DELETE /api/users/{userId}/posts/{postId}", deleteUserPostHandler)
 
-	addr := ":8080"
+	addr := ":8081"
 	fmt.Printf("Server starting on %s\n", addr)
 	fmt.Println("Endpoints:")
 	fmt.Println("  GET    /api/users                         - List all users")
@@ -301,9 +403,4 @@ func main() {
 	}
 
 	log.Fatal(server.ListenAndServe())
-
-	// Используем импорты
-	_ = json.NewEncoder
-	_ = strconv.Atoi
-	_ = strings.TrimSpace
 }
