@@ -119,203 +119,186 @@ var storage = NewProductStorage()
 // writeJSON отправляет JSON ответ
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	// TODO: реализуй функцию
-	_ = w
-	_ = status
-	_ = data
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
 }
 
 // writeError отправляет JSON ответ с ошибкой
 func writeError(w http.ResponseWriter, status int, message string) {
 	// TODO: реализуй функцию
-	_ = w
-	_ = status
-	_ = message
+	writeJSON(w, status, ErrorResponse{message})
 }
 
 // ParseFilter извлекает параметры фильтрации из запроса
 func ParseFilter(r *http.Request) ProductFilter {
 	// TODO: реализуй функцию
-	// query := r.URL.Query()
-	//
-	// filter := ProductFilter{
-	//     Category: query.Get("category"),
-	//     Search:   query.Get("search"),
-	// }
-	//
-	// // Парсинг min_price
-	// if minStr := query.Get("min_price"); minStr != "" {
-	//     if min, err := strconv.ParseFloat(minStr, 64); err == nil {
-	//         filter.MinPrice = min
-	//     }
-	// }
-	//
-	// // Парсинг max_price
-	// if maxStr := query.Get("max_price"); maxStr != "" {
-	//     if max, err := strconv.ParseFloat(maxStr, 64); err == nil {
-	//         filter.MaxPrice = max
-	//     }
-	// }
-	//
-	// // Парсинг in_stock (только если параметр передан)
-	// if _, ok := query["in_stock"]; ok {
-	//     if inStock, err := strconv.ParseBool(query.Get("in_stock")); err == nil {
-	//         filter.InStock = &inStock
-	//     }
-	// }
-	//
-	// return filter
-	_ = r
-	return ProductFilter{}
+	query := r.URL.Query()
+
+	filter := ProductFilter{
+		Category: query.Get("category"),
+		Search:   query.Get("search"),
+	}
+
+	// Парсинг min_price
+	if minStr := query.Get("min_price"); minStr != "" {
+		if min, err := strconv.ParseFloat(minStr, 64); err == nil {
+			filter.MinPrice = min
+		}
+	}
+
+	// Парсинг max_price
+	if maxStr := query.Get("max_price"); maxStr != "" {
+		if max, err := strconv.ParseFloat(maxStr, 64); err == nil {
+			filter.MaxPrice = max
+		}
+	}
+
+	// Парсинг in_stock (только если параметр передан)
+	if _, ok := query["in_stock"]; ok {
+		if inStock, err := strconv.ParseBool(query.Get("in_stock")); err == nil {
+			filter.InStock = &inStock
+		}
+	}
+
+	return filter
 }
 
 // ParseSort извлекает параметры сортировки из запроса
 func ParseSort(r *http.Request) SortParams {
 	// TODO: реализуй функцию
-	// query := r.URL.Query()
-	//
-	// params := SortParams{
-	//     Field: query.Get("sort"),
-	//     Order: query.Get("order"),
-	// }
-	//
-	// // Валидация поля сортировки
-	// validFields := map[string]bool{"name": true, "price": true, "created_at": true}
-	// if !validFields[params.Field] {
-	//     params.Field = ""
-	// }
-	//
-	// // Значение по умолчанию для order
-	// if params.Order != "desc" {
-	//     params.Order = "asc"
-	// }
-	//
-	// return params
-	_ = r
-	return SortParams{}
+	query := r.URL.Query()
+
+	params := SortParams{
+		Field: query.Get("sort"),
+		Order: query.Get("order"),
+	}
+
+	// Валидация поля сортировки
+	validFields := map[string]bool{"name": true, "price": true, "created_at": true}
+	if !validFields[params.Field] {
+		params.Field = ""
+	}
+
+	// Значение по умолчанию для order
+	if params.Order != "desc" {
+		params.Order = "asc"
+	}
+
+	return params
 }
 
 // ParsePagination извлекает параметры пагинации из запроса
 func ParsePagination(r *http.Request) PaginationParams {
 	// TODO: реализуй функцию
-	// query := r.URL.Query()
-	//
-	// page, _ := strconv.Atoi(query.Get("page"))
-	// if page < 1 {
-	//     page = 1
-	// }
-	//
-	// perPage, _ := strconv.Atoi(query.Get("per_page"))
-	// if perPage < 1 {
-	//     perPage = 10
-	// }
-	// if perPage > 100 {
-	//     perPage = 100
-	// }
-	//
-	// return PaginationParams{Page: page, PerPage: perPage}
-	_ = r
-	return PaginationParams{Page: 1, PerPage: 10}
+	query := r.URL.Query()
+
+	page, _ := strconv.Atoi(query.Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	perPage, _ := strconv.Atoi(query.Get("per_page"))
+	if perPage < 1 {
+		perPage = 10
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+
+	return PaginationParams{Page: page, PerPage: perPage}
 }
 
 // FilterProducts применяет фильтры к списку продуктов
 func FilterProducts(products []Product, filter ProductFilter) []Product {
 	// TODO: реализуй функцию
-	// result := make([]Product, 0)
-	//
-	// for _, p := range products {
-	//     // Фильтр по категории
-	//     if filter.Category != "" && p.Category != filter.Category {
-	//         continue
-	//     }
-	//
-	//     // Фильтр по минимальной цене
-	//     if filter.MinPrice > 0 && p.Price < filter.MinPrice {
-	//         continue
-	//     }
-	//
-	//     // Фильтр по максимальной цене
-	//     if filter.MaxPrice > 0 && p.Price > filter.MaxPrice {
-	//         continue
-	//     }
-	//
-	//     // Фильтр по наличию
-	//     if filter.InStock != nil && p.InStock != *filter.InStock {
-	//         continue
-	//     }
-	//
-	//     // Поиск по названию (регистронезависимый)
-	//     if filter.Search != "" {
-	//         if !strings.Contains(strings.ToLower(p.Name), strings.ToLower(filter.Search)) {
-	//             continue
-	//         }
-	//     }
-	//
-	//     result = append(result, p)
-	// }
-	//
-	// return result
-	_ = filter
-	return products
+	result := make([]Product, 0)
+
+	for _, p := range products {
+		// Фильтр по категории
+		if filter.Category != "" && p.Category != filter.Category {
+			continue
+		}
+
+		// Фильтр по минимальной цене
+		if filter.MinPrice > 0 && p.Price < filter.MinPrice {
+			continue
+		}
+
+		// Фильтр по максимальной цене
+		if filter.MaxPrice > 0 && p.Price > filter.MaxPrice {
+			continue
+		}
+
+		// Фильтр по наличию
+		if filter.InStock != nil && p.InStock != *filter.InStock {
+			continue
+		}
+
+		// Поиск по названию (регистронезависимый)
+		if filter.Search != "" {
+			if !strings.Contains(strings.ToLower(p.Name), strings.ToLower(filter.Search)) {
+				continue
+			}
+		}
+
+		result = append(result, p)
+	}
+
+	return result
 }
 
 // SortProducts сортирует продукты
 func SortProducts(products []Product, params SortParams) {
 	// TODO: реализуй функцию
-	// if params.Field == "" {
-	//     return
-	// }
-	//
-	// sort.Slice(products, func(i, j int) bool {
-	//     var less bool
-	//
-	//     switch params.Field {
-	//     case "name":
-	//         less = products[i].Name < products[j].Name
-	//     case "price":
-	//         less = products[i].Price < products[j].Price
-	//     case "created_at":
-	//         less = products[i].CreatedAt.Before(products[j].CreatedAt)
-	//     default:
-	//         return false
-	//     }
-	//
-	//     if params.Order == "desc" {
-	//         return !less
-	//     }
-	//     return less
-	// })
-	_ = products
-	_ = params
+	if params.Field == "" {
+		return
+	}
+
+	sort.Slice(products, func(i, j int) bool {
+		var less bool
+
+		switch params.Field {
+		case "name":
+			less = products[i].Name < products[j].Name
+		case "price":
+			less = products[i].Price < products[j].Price
+		case "created_at":
+			less = products[i].CreatedAt.Before(products[j].CreatedAt)
+		default:
+			return false
+		}
+
+		if params.Order == "desc" {
+			return !less
+		}
+		return less
+	})
 }
 
 // Paginate возвращает срез для указанной страницы
 func Paginate(products []Product, params PaginationParams) []Product {
 	// TODO: реализуй функцию
-	// start := (params.Page - 1) * params.PerPage
-	// if start >= len(products) {
-	//     return []Product{}
-	// }
-	//
-	// end := start + params.PerPage
-	// if end > len(products) {
-	//     end = len(products)
-	// }
-	//
-	// return products[start:end]
-	_ = params
-	return products
+	start := (params.Page - 1) * params.PerPage
+	if start >= len(products) {
+		return []Product{}
+	}
+
+	end := start + params.PerPage
+	if end > len(products) {
+		end = len(products)
+	}
+
+	return products[start:end]
 }
 
 // CalculateTotalPages вычисляет количество страниц
 func CalculateTotalPages(total, perPage int) int {
 	// TODO: реализуй функцию
-	// if perPage <= 0 {
-	//     return 0
-	// }
-	// return (total + perPage - 1) / perPage
-	_ = total
-	_ = perPage
-	return 1
+	if perPage <= 0 {
+		return 0
+	}
+	return (total + perPage - 1) / perPage
 }
 
 // listProductsHandler обрабатывает GET /api/products
@@ -338,8 +321,23 @@ func listProductsHandler(w http.ResponseWriter, r *http.Request) {
 	//        TotalPages: CalculateTotalPages(total, pagination.PerPage),
 	//    }
 	// 10. Отправь: writeJSON(w, http.StatusOK, response)
-	_ = r
-	_ = w
+	products := storage.GetAll()
+	filter := ParseFilter(r)
+	sortParams := ParseSort(r)
+	pagination := ParsePagination(r)
+	filtered := FilterProducts(products, filter)
+	total := len(filtered)
+	SortProducts(filtered, sortParams)
+	page := Paginate(filtered, pagination)
+	response := ProductsResponse{
+		Products:   page,
+		Total:      total,
+		Page:       pagination.Page,
+		PerPage:    pagination.PerPage,
+		TotalPages: CalculateTotalPages(total, pagination.PerPage),
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 // getProductHandler обрабатывает GET /api/products/{id}
@@ -348,18 +346,28 @@ func getProductHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Получи id из пути
 	// 2. Конвертируй в int
 	// 3. Получи продукт или верни 404
-	_ = r
-	_ = w
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	product, exists := storage.Get(id)
+	if !exists {
+		writeError(w, http.StatusNotFound, "product not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, product)
 }
 
 func main() {
 	mux := http.NewServeMux()
 
 	// TODO: зарегистрируй обработчики
-	// mux.HandleFunc("GET /api/products", listProductsHandler)
-	// mux.HandleFunc("GET /api/products/{id}", getProductHandler)
+	mux.HandleFunc("GET /api/products", listProductsHandler)
+	mux.HandleFunc("GET /api/products/{id}", getProductHandler)
 
-	addr := ":8080"
+	addr := ":8081"
 	fmt.Printf("Server starting on %s\n", addr)
 	fmt.Println("Endpoints:")
 	fmt.Println("  GET /api/products      - List products with filters")
@@ -381,10 +389,4 @@ func main() {
 	}
 
 	log.Fatal(server.ListenAndServe())
-
-	// Используем импорты
-	_ = json.NewEncoder
-	_ = strconv.Atoi
-	_ = strings.ToLower
-	_ = sort.Slice
 }
