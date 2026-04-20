@@ -216,7 +216,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: реализуй обработчик
 	// 1. Получи userId из пути
 	// 2. Найди пользователя или верни 404
-	userId, err := parseIntParam(r, r.PathValue("userId"))
+	userId, err := parseIntParam(r, "userId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid userID")
 		return
@@ -240,12 +240,12 @@ func listUserPostsHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Если не существует: writeError(w, http.StatusNotFound, "user not found")
 	// 5. Получи посты: posts := postStorage.GetByUserID(userID)
 	// 6. Верни посты: writeJSON(w, http.StatusOK, posts)
-	userId, err := parseIntParam(r, r.PathValue("userId"))
+	userId, err := parseIntParam(r, "userId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid userID")
 		return
 	}
-	if exists := userStorage.Exists(userId); exists {
+	if exists := userStorage.Exists(userId); !exists {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
@@ -263,13 +263,13 @@ func getUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что пост существует — иначе 404 "post not found"
 	// 5. Проверь, что post.UserID == userID — иначе 404 "post not found"
 	// 6. Верни пост
-	userId, err := parseIntParam(r, r.PathValue("userId"))
+	userId, err := parseIntParam(r, "userId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid userID")
 		return
 	}
 
-	postId, err := parseIntParam(r, r.PathValue("postId"))
+	postId, err := parseIntParam(r, "postId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid postID")
 		return
@@ -302,7 +302,7 @@ func createUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что title не пустой — иначе 400 "title is required"
 	// 5. Создай пост: post := postStorage.Create(userID, req)
 	// 6. Верни пост: writeJSON(w, http.StatusCreated, post)
-	userId, err := parseIntParam(r, r.PathValue("userId"))
+	userId, err := parseIntParam(r, "userId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid userID")
 		return
@@ -314,12 +314,14 @@ func createUserPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var postReq CreatePostRequest
+	// парсим тело запроса и заполняем postReq данными
+	err = parseJSON(r, &postReq)
 
-	if err = parseJSON(r, postReq); err != nil {
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if strings.TrimSpace(postReq.Title) != "" {
+	if strings.TrimSpace(postReq.Title) == "" {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
@@ -336,15 +338,15 @@ func deleteUserPostHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Проверь, что post.UserID == userID — иначе 404
 	// 5. Удали пост: postStorage.Delete(postID)
 	// 6. Верни 204: w.WriteHeader(http.StatusNoContent)
-	userId, err := parseIntParam(r, r.PathValue("userId"))
+	userId, err := parseIntParam(r, "userId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid userID")
 		return
 	}
 
-	postId, err := parseIntParam(r, r.PathValue("postId"))
+	postId, err := parseIntParam(r, "postId")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "ivalid postId")
+		writeError(w, http.StatusBadRequest, "invalid postId")
 		return
 	}
 
