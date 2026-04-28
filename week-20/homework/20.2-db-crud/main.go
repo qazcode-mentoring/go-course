@@ -50,12 +50,26 @@ func CreateUser(ctx context.Context, pool *pgxpool.Pool, name, email string, age
 	//        return User{}, ErrEmailAlreadyExists
 	//    }
 	// 4. Верни созданного пользователя
-	_ = ctx
-	_ = pool
-	_ = name
-	_ = email
-	_ = age
-	return User{}, fmt.Errorf("not implemented")
+
+	var user User
+
+	query := `INSERT INTO users (name, email, age)
+			  VALUES ($1, $2, $3)
+			  RETURNING id, name, email, age, created_at, updated_at`
+
+	err := pool.QueryRow(ctx, query, name, email, age).
+		Scan(&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return User{}, ErrEmailAlreadyExists
+		}
+		return User{}, fmt.Errorf("create user: %w", err)
+	}
+
+	return user, nil
+
 }
 
 // GetUserByID возвращает пользователя по ID
@@ -70,20 +84,40 @@ func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id int) (User, error) 
 	//        return User{}, ErrUserNotFound
 	//    }
 	// 4. Верни пользователя
-	_ = ctx
-	_ = pool
-	_ = id
-	return User{}, fmt.Errorf("not implemented")
+	var user User
+	query := `SELECT id, name, email, age, created_at, updated_at
+			   FROM users WHERE id = $1`
+
+	err := pool.QueryRow(ctx, query, id).
+		Scan(&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, fmt.Errorf("get user by id: %w", err)
+	}
+	return user, nil
 }
 
 // GetUserByEmail возвращает пользователя по email
 func GetUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (User, error) {
 	// TODO: реализуй функцию
 	// Аналогично GetUserByID, но поиск по email
-	_ = ctx
-	_ = pool
-	_ = email
-	return User{}, fmt.Errorf("not implemented")
+	var user User
+	query := `SELECT id, name, email, age, created_at, updated_at
+			   FROM users WHERE email = $1`
+
+	err := pool.QueryRow(ctx, query, email).
+		Scan(&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, fmt.Errorf("get user by email: %w", err)
+	}
+	return user, nil
 }
 
 // GetAllUsers возвращает всех пользователей
@@ -107,9 +141,39 @@ func GetAllUsers(ctx context.Context, pool *pgxpool.Pool) ([]User, error) {
 	//    }
 	// 5. Проверь rows.Err() после цикла
 	// 6. Верни users
-	_ = ctx
-	_ = pool
-	return nil, fmt.Errorf("not implemented")
+
+	query := `SELECT id, name, email, age, created_at, updated_at
+              FROM users ORDER BY id`
+
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("get all users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+
+	for rows.Next() {
+		var user User
+		err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.Age,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return users, nil
 }
 
 // UpdateUser обновляет данные пользователя
@@ -123,13 +187,40 @@ func UpdateUser(ctx context.Context, pool *pgxpool.Pool, id int, name, email str
 	// 3. Проверь на pgx.ErrNoRows (пользователь не найден)
 	// 4. Проверь на дублирование email (код 23505)
 	// 5. Верни обновлённого пользователя
-	_ = ctx
-	_ = pool
-	_ = id
-	_ = name
-	_ = email
-	_ = age
-	return User{}, fmt.Errorf("not implemented")
+	var user User
+
+	query := `UPDATE users 
+			  SET name = $1, email = $2, age = $3, updated_at = NOW()
+			  WHERE id = $4
+			  RETURNING id, name, email, age, created_at, updated_at`
+
+	err := pool.QueryRow(ctx, query, name, email, age, id).
+		Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.Age,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		// дубликат email
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return User{}, ErrEmailAlreadyExists
+		}
+
+		// пользователь не найден
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+
+		return User{}, fmt.Errorf("update user: %w", err)
+	}
+
+	return user, nil
 }
 
 // DeleteUser удаляет пользователя по ID
@@ -143,10 +234,16 @@ func DeleteUser(ctx context.Context, pool *pgxpool.Pool, id int) error {
 	//        return ErrUserNotFound
 	//    }
 	// 4. Верни nil при успехе
-	_ = ctx
-	_ = pool
-	_ = id
-	return fmt.Errorf("not implemented")
+	result, err := pool.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }
 
 func main() {
