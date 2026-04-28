@@ -67,69 +67,128 @@ func NewPostgresUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
 
 // Create создаёт нового пользователя в базе данных
 func (r *PostgresUserRepository) Create(ctx context.Context, user *User) error {
-	// TODO: реализуй метод
-	// 1. Выполни INSERT с RETURNING:
-	//    err := r.pool.QueryRow(ctx,
-	//        `INSERT INTO users (name, email, age)
-	//         VALUES ($1, $2, $3)
-	//         RETURNING id, created_at, updated_at`,
-	//        user.Name, user.Email, user.Age,
-	//    ).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-	// 2. Обработай ошибку уникальности email (код 23505)
-	// 3. Верни nil при успехе
-	_ = ctx
-	_ = user
-	return fmt.Errorf("not implemented")
+	query := `INSERT INTO users (name, email, age) 
+              VALUES ($1, $2, $3) 
+              RETURNING id, created_at, updated_at`
+
+	err := r.pool.QueryRow(ctx, query, user.Name, user.Email, user.Age).
+		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return ErrEmailAlreadyExists
+			}
+		}
+		return fmt.Errorf("create user: %w", err)
+	}
+
+	return nil
 }
 
 // GetByID возвращает пользователя по ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id int) (*User, error) {
-	// TODO: реализуй метод
-	// 1. Выполни SELECT запрос
-	// 2. Проверь на pgx.ErrNoRows -> ErrUserNotFound
-	// 3. Верни указатель на пользователя
-	_ = ctx
-	_ = id
-	return nil, fmt.Errorf("not implemented")
+	user := &User{}
+	query := `SELECT id, name, email, age, created_at, updated_at 
+              FROM users WHERE id = $1`
+
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get user by id: %w", err)
+	}
+	return user, nil
 }
 
-// GetByEmail возвращает пользователя по email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	// TODO: реализуй метод
-	_ = ctx
-	_ = email
-	return nil, fmt.Errorf("not implemented")
+	user := &User{}
+	query := `SELECT id, name, email, age, created_at, updated_at 
+              FROM users WHERE email = $1`
+
+	err := r.pool.QueryRow(ctx, query, email).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get user by email: %w", err)
+	}
+	return user, nil
 }
 
 // GetAll возвращает всех пользователей
 func (r *PostgresUserRepository) GetAll(ctx context.Context) ([]*User, error) {
-	// TODO: реализуй метод
-	// 1. Выполни SELECT запрос
-	// 2. Итерируй по rows
-	// 3. Создавай указатели на User и добавляй в срез
-	_ = ctx
-	return nil, fmt.Errorf("not implemented")
+	query := `SELECT id, name, email, age, created_at, updated_at FROM users`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query all users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := &User{} // Создаем новый объект на каждой итерации
+		err := rows.Scan(
+			&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt, &user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows loop: %w", err)
+	}
+
+	return users, nil
 }
 
 // Update обновляет данные пользователя
 func (r *PostgresUserRepository) Update(ctx context.Context, user *User) error {
-	// TODO: реализуй метод
-	// 1. Выполни UPDATE с RETURNING updated_at
-	// 2. Проверь на pgx.ErrNoRows -> ErrUserNotFound
-	// 3. Обработай ошибку уникальности email
-	_ = ctx
-	_ = user
-	return fmt.Errorf("not implemented")
+	query := `UPDATE users 
+              SET name = $1, email = $2, age = $3, updated_at = NOW() 
+              WHERE id = $4 
+              RETURNING updated_at`
+
+	err := r.pool.QueryRow(ctx, query, user.Name, user.Email, user.Age, user.ID).Scan(&user.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrEmailAlreadyExists
+		}
+		return fmt.Errorf("update user: %w", err)
+	}
+
+	return nil
 }
 
-// Delete удаляет пользователя по ID
 func (r *PostgresUserRepository) Delete(ctx context.Context, id int) error {
-	// TODO: реализуй метод
-	// 1. Выполни DELETE
-	// 2. Проверь RowsAffected() == 0 -> ErrUserNotFound
-	_ = ctx
-	_ = id
-	return fmt.Errorf("not implemented")
+	query := `DELETE FROM users WHERE id = $1`
+
+	result, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }
 
 // ============================================================================
@@ -153,67 +212,101 @@ func NewInMemoryUserRepository() *InMemoryUserRepository {
 
 // Create создаёт нового пользователя в памяти
 func (r *InMemoryUserRepository) Create(ctx context.Context, user *User) error {
-	// TODO: реализуй метод
-	// 1. Захвати Lock: r.mu.Lock() / defer r.mu.Unlock()
-	// 2. Проверь уникальность email среди существующих пользователей
-	// 3. Если email уже существует -> return ErrEmailAlreadyExists
-	// 4. Установи ID, CreatedAt, UpdatedAt
-	// 5. Создай копию user и сохрани в map
-	_ = ctx
-	_ = user
-	return fmt.Errorf("not implemented")
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Проверка уникальности email
+	for _, u := range r.users {
+		if u.Email == user.Email {
+			return ErrEmailAlreadyExists
+		}
+	}
+
+	user.ID = r.nextID
+	r.nextID++
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
+	userCopy := *user
+	r.users[user.ID] = &userCopy
+
+	return nil
 }
 
 // GetByID возвращает пользователя по ID
 func (r *InMemoryUserRepository) GetByID(ctx context.Context, id int) (*User, error) {
-	// TODO: реализуй метод
-	// 1. Захвати RLock
-	// 2. Найди пользователя в map
-	// 3. Если не найден -> ErrUserNotFound
-	// 4. Верни копию пользователя (чтобы избежать race condition)
-	_ = ctx
-	_ = id
-	return nil, fmt.Errorf("not implemented")
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	user, ok := r.users[id]
+	if !ok {
+		return nil, ErrUserNotFound
+	}
+
+	userCopy := *user
+	return &userCopy, nil
 }
 
 // GetByEmail возвращает пользователя по email
 func (r *InMemoryUserRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	// TODO: реализуй метод
-	_ = ctx
-	_ = email
-	return nil, fmt.Errorf("not implemented")
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, u := range r.users {
+		if u.Email == email {
+			userCopy := *u
+			return &userCopy, nil
+		}
+	}
+	return nil, ErrUserNotFound
 }
 
 // GetAll возвращает всех пользователей
 func (r *InMemoryUserRepository) GetAll(ctx context.Context) ([]*User, error) {
-	// TODO: реализуй метод
-	// 1. Захвати RLock
-	// 2. Создай срез и добавь копии всех пользователей
-	_ = ctx
-	return nil, fmt.Errorf("not implemented")
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	users := make([]*User, 0, len(r.users))
+	for _, u := range r.users {
+		userCopy := *u
+		users = append(users, &userCopy)
+	}
+	return users, nil
 }
 
 // Update обновляет данные пользователя
 func (r *InMemoryUserRepository) Update(ctx context.Context, user *User) error {
-	// TODO: реализуй метод
-	// 1. Захвати Lock
-	// 2. Проверь, что пользователь существует
-	// 3. Проверь уникальность email (кроме текущего пользователя)
-	// 4. Обнови данные и UpdatedAt
-	_ = ctx
-	_ = user
-	return fmt.Errorf("not implemented")
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, ok := r.users[user.ID]
+	if !ok {
+		return ErrUserNotFound
+	}
+
+	for _, u := range r.users {
+		if u.Email == user.Email && u.ID != user.ID {
+			return ErrEmailAlreadyExists
+		}
+	}
+
+	user.UpdatedAt = time.Now()
+	userCopy := *user
+	r.users[user.ID] = &userCopy
+
+	return nil
 }
 
-// Delete удаляет пользователя по ID
 func (r *InMemoryUserRepository) Delete(ctx context.Context, id int) error {
-	// TODO: реализуй метод
-	// 1. Захвати Lock
-	// 2. Проверь, что пользователь существует
-	// 3. Удали из map
-	_ = ctx
-	_ = id
-	return fmt.Errorf("not implemented")
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.users[id]; !ok {
+		return ErrUserNotFound
+	}
+
+	delete(r.users, id)
+	return nil
 }
 
 // ============================================================================
@@ -232,57 +325,75 @@ func NewUserService(repo UserRepository) *UserService {
 
 // RegisterUser регистрирует нового пользователя
 func (s *UserService) RegisterUser(ctx context.Context, name, email string, age int) (*User, error) {
-	// TODO: реализуй метод
-	// 1. Валидация имени: if strings.TrimSpace(name) == "" -> ErrNameRequired
-	// 2. Валидация email: if strings.TrimSpace(email) == "" -> ErrEmailRequired
-	// 3. Валидация возраста: if age < 0 || age > 150 -> ErrInvalidAge
-	// 4. Создай User с нормализованными данными
-	// 5. Вызови s.repo.Create(ctx, user)
-	// 6. Верни пользователя
-	_ = ctx
-	_ = name
-	_ = email
-	_ = age
-	return nil, fmt.Errorf("not implemented")
+	// 1. Валидация
+	if strings.TrimSpace(name) == "" {
+		return nil, ErrNameRequired
+	}
+	if strings.TrimSpace(email) == "" {
+		return nil, ErrEmailRequired
+	}
+	if age < 0 || age > 150 {
+		return nil, ErrInvalidAge
+	}
+
+	// 2. Нормализация и создание объекта
+	user := &User{
+		Name:  strings.TrimSpace(name),
+		Email: strings.ToLower(strings.TrimSpace(email)),
+		Age:   age,
+	}
+
+	// 3. Сохранение через репозиторий
+	if err := s.repo.Create(ctx, user); err != nil {
+		return nil, err // Здесь может вернуться ErrEmailAlreadyExists из репозитория
+	}
+
+	return user, nil
 }
 
-// GetUser возвращает пользователя по ID
 func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
-	// TODO: реализуй метод
-	// Просто делегируй в репозиторий
-	_ = ctx
-	_ = id
-	return nil, fmt.Errorf("not implemented")
+	return s.repo.GetByID(ctx, id)
 }
 
-// ListUsers возвращает всех пользователей
 func (s *UserService) ListUsers(ctx context.Context) ([]*User, error) {
-	// TODO: реализуй метод
-	_ = ctx
-	return nil, fmt.Errorf("not implemented")
+	return s.repo.GetAll(ctx)
 }
 
 // UpdateUser обновляет пользователя
 func (s *UserService) UpdateUser(ctx context.Context, id int, name, email string, age int) (*User, error) {
-	// TODO: реализуй метод
-	// 1. Получи пользователя по ID
-	// 2. Валидируй входные данные
-	// 3. Обнови поля
-	// 4. Вызови repo.Update
-	_ = ctx
-	_ = id
-	_ = name
-	_ = email
-	_ = age
-	return nil, fmt.Errorf("not implemented")
+	// 1. Сначала проверяем, существует ли пользователь
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err // Вернет ErrUserNotFound
+	}
+
+	// 2. Валидация новых данных
+	if strings.TrimSpace(name) == "" {
+		return nil, ErrNameRequired
+	}
+	if strings.TrimSpace(email) == "" {
+		return nil, ErrEmailRequired
+	}
+	if age < 0 || age > 150 {
+		return nil, ErrInvalidAge
+	}
+
+	// 3. Обновляем поля
+	user.Name = strings.TrimSpace(name)
+	user.Email = strings.ToLower(strings.TrimSpace(email))
+	user.Age = age
+
+	// 4. Сохраняем
+	if err := s.repo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 // DeleteUser удаляет пользователя
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
-	// TODO: реализуй метод
-	_ = ctx
-	_ = id
-	return fmt.Errorf("not implemented")
+	return s.repo.Delete(ctx, id)
 }
 
 func main() {
